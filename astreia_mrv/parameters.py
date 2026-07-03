@@ -146,6 +146,15 @@ def map_lifting_body_parameters(design: VehicleDesign) -> PhysicalParameters:
     values["nose_chine_scale"] = interp_from_rx(nose_bluntness, 0.62, 0.86)
     values["nose_belly_scale"] = interp_from_rx(nose_bluntness, 0.56, 0.70)
     values["forebody_width_scale"] = interp_from_rx(nose_bluntness, 0.74, 0.88)
+    values["station2_shoulder_y_scale"] = interp_from_rx(rx["y_2_2"], 0.48, 0.68)
+    values["station2_shoulder_z_scale"] = interp_from_rx(rx["z_2_2"], 0.42, 0.62)
+    values["station2_chine_y_scale"] = interp_from_rx(rx["y_2_3"], 0.86, 1.06)
+    values["station2_chine_z_scale"] = interp_from_rx(rx["z_2_3"], -0.16, -0.04)
+    values["station2_belly_scale"] = interp_from_rx(rx["z_2_4"], 0.82, 1.02)
+    values["station3_width_scale"] = interp_from_rx(rx["y_3_2"], 0.88, 1.06)
+    values["station3_shoulder_y_scale"] = interp_from_rx(rx["y_3_3"], 0.48, 0.68)
+    values["station3_shoulder_z_scale"] = interp_from_rx(rx["z_3_3"], 0.34, 0.54)
+    values["fin_span_scale"] = interp_from_rx(rx["yw1"], 0.62, 1.02)
     values["dx_f_xw4"] = 0.05 * values["L_w"] + rx["dx_f_xw4"] * 0.20 * values["L_w"]
     values["payload_bay_length"] = design.payload.length_m
     values["payload_bay_width"] = design.payload.width_m

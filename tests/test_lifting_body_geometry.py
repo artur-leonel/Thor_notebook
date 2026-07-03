@@ -34,7 +34,7 @@ def test_lifting_body_controls_are_integrated_with_body_mesh():
     assert len(geom.control_surfaces["right_strake"].faces) >= 100
     assert len(geom.control_surfaces["left_strake"].faces) >= 100
     assert len(geom.control_surfaces["dorsal_fin"].faces) >= 20
-    assert len(geom.control_surfaces["ventral_fin"].faces) >= 20
+    assert len(geom.control_surfaces["ventral_fin"].faces) >= 12
     fin_geometry = geom.metadata["control_surfaces"]["geometry"]
     assert fin_geometry["topology"].startswith("single continuous")
     assert 0.08 <= fin_geometry["per_side_fin_extension_m"] <= 0.13

@@ -35,20 +35,32 @@ def _contour_points(params: dict[str, float], station: int, x: float, r1: float 
         )
     else:
         if station == 2:
-            hw_scale, top_scale, belly_scale = params["forebody_width_scale"], 0.96, 0.90
+            hw_scale = params["forebody_width_scale"]
+            top_scale = 0.96
+            belly_scale = params["station2_belly_scale"]
+            shoulder_y_scale = params["station2_shoulder_y_scale"]
+            shoulder_z_scale = params["station2_shoulder_z_scale"]
+            chine_y_scale = params["station2_chine_y_scale"]
+            chine_z_scale = params["station2_chine_z_scale"]
         else:
-            hw_scale, top_scale, belly_scale = 0.62, 0.64, 0.70
+            hw_scale = params["station3_width_scale"]
+            top_scale = 0.64
+            belly_scale = 0.70
+            shoulder_y_scale = params["station3_shoulder_y_scale"]
+            shoulder_z_scale = params["station3_shoulder_z_scale"]
+            chine_y_scale = 1.0
+            chine_z_scale = -0.08
         hw = params["body_half_width"] * hw_scale
         top = params["body_top_height"] * top_scale
         belly = params["body_belly_depth"] * belly_scale
         yz = np.array(
             [
                 [0.0, top],
-                [0.58 * hw, 0.50 * top],
-                [1.00 * hw, -0.08 * belly],
+                [shoulder_y_scale * hw, shoulder_z_scale * top],
+                [chine_y_scale * hw, chine_z_scale * belly],
                 [0.0, -0.92 * belly],
-                [-1.00 * hw, -0.08 * belly],
-                [-0.58 * hw, 0.50 * top],
+                [-chine_y_scale * hw, chine_z_scale * belly],
+                [-shoulder_y_scale * hw, shoulder_z_scale * top],
             ]
         )
     return np.column_stack([np.full(6, x), yz[:, 0], yz[:, 1]])
@@ -270,7 +282,7 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
     x0 = 0.74 * l
     x1 = 0.992 * l
     elevon_break = 0.865 * l
-    span_max = min(0.085 * l, 1.40 * half_width)
+    span_max = min(0.085 * l, 1.40 * half_width) * params["fin_span_scale"]
     thickness = max(0.032, 0.30 * span_max)
     span_fracs = (0.45, 0.78, 1.0)
 
@@ -586,7 +598,7 @@ def _tag_integrated_control_surfaces(
         (x >= 0.74 * l)
         & (x <= 0.990 * l)
         & (ay <= 0.34 * half_width)
-        & (z <= -0.54 * belly)
+        & (z <= -0.30 * belly)
     ) | (existing_zones == "ventral_fin")
     body_flap_mask = (
         (x >= 0.66 * l)
