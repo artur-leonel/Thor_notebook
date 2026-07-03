@@ -71,8 +71,21 @@ outputs/mrv3_notebook/onshape_step/geometry_onshape.step
 ```
 
 The STEP handoff contains a lofted body plus separate solid parts for the left
-and right canted aft fins and center body flap. The mesh exports remain useful
-for visual comparison only.
+and right canted aft fins, dorsal/ventral tail fins, and center body flap. STEP
+does not preserve the Python/THOR feature history, so the export also includes
+editable reconstruction aids:
+
+```text
+outputs/mrv3_notebook/onshape_parameters.csv
+outputs/mrv3_notebook/onshape_loft_sections.csv
+outputs/mrv3_notebook/onshape_variables.fs
+outputs/mrv3_notebook/onshape_brep_spec.json
+```
+
+Use the CSV files as the dimensional source for Onshape sketches/lofts, and
+copy `onshape_variables.fs` into a Feature Studio if you want named MRV
+variables inside the document. The mesh exports remain useful for visual
+comparison only.
 
 This branch keeps the original safety framing: landing accuracy is represented as terminal recovery into an authorized recovery zone, not arbitrary precision impact targeting.
 

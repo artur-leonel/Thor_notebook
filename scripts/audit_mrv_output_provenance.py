@@ -69,6 +69,7 @@ def audit(out_dir: Path) -> list[str]:
     geometry = generate_geometry(design)
     geometry_json = _read_json(out_dir / "geometry.json")
     metrics_json = _read_json(out_dir / "metrics.json")
+    brep_spec = _read_json(out_dir / "onshape_brep_spec.json")
 
     for label, payload in (("geometry.json", geometry_json), ("metrics.json", metrics_json)):
         provenance = payload.get("provenance")
@@ -111,10 +112,35 @@ def audit(out_dir: Path) -> list[str]:
         geometry.metadata.get("parameters", {}),
         errors,
     )
+    _compare_numeric_mapping(
+        "onshape_brep_spec.source_parameters",
+        brep_spec.get("source_parameters", {}),
+        geometry.metadata.get("parameters", {}),
+        errors,
+    )
+    _compare_numeric_mapping(
+        "onshape_brep_spec.normalized_rx",
+        brep_spec.get("normalized_rx", {}),
+        design.rx,
+        errors,
+    )
     _close("geometry.reference_area_m2", geometry_json.get("reference_area_m2", -1), geometry.reference_area_m2, errors)
     _close("geometry.reference_length_m", geometry_json.get("reference_length_m", -1), geometry.reference_length_m, errors)
     _close("geometry.volume_m3", geometry_json.get("volume_m3", -1), geometry.volume_m3, errors)
     _close("geometry.wetted_area_m2", geometry_json.get("wetted_area_m2", -1), geometry.wetted_area_m2, errors)
+    for artifact_name in ("onshape_parameters.csv", "onshape_loft_sections.csv", "onshape_variables.fs"):
+        if not (out_dir / artifact_name).exists():
+            errors.append(f"missing Onshape editable handoff artifact: {out_dir / artifact_name}")
+    step_manifest_path = out_dir / "onshape_step" / "onshape_step_manifest.json"
+    if step_manifest_path.exists():
+        step_manifest = _read_json(step_manifest_path)
+        if step_manifest.get("valid_body") is not True:
+            errors.append("onshape_step_manifest.valid_body is not true")
+        if step_manifest.get("valid_assembly") is not True:
+            errors.append("onshape_step_manifest.valid_assembly is not true")
+        assembly_path = Path(str(step_manifest.get("assembly_step", "")))
+        if not assembly_path.exists():
+            errors.append(f"Onshape assembly STEP is missing: {assembly_path}")
 
     metrics_geometry = metrics_json.get("geometry", {})
     _close("metrics.geometry.reference_area_m2", metrics_geometry.get("reference_area_m2", -1), geometry.reference_area_m2, errors)

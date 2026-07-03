@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -13,15 +14,25 @@ def _fmt_float(value: float) -> str:
     return f"{float(value):.9g}"
 
 
-def _body_profile_points(x: float, half_width: float, top: float, belly: float) -> list[list[float]]:
+def _body_profile_points(
+    x: float,
+    half_width: float,
+    top: float,
+    belly: float,
+    shoulder_y_scale: float = 0.58,
+    shoulder_z_scale: float = 0.50,
+    chine_y_scale: float = 1.00,
+    chine_z_scale: float = -0.08,
+    belly_scale: float = 0.92,
+) -> list[list[float]]:
     """Six-point chine body section used by the Onshape BREP handoff."""
     yz = [
         (0.0, top),
-        (0.70 * half_width, 0.64 * top),
-        (1.02 * half_width, -0.12 * belly),
-        (0.0, -belly),
-        (-1.02 * half_width, -0.12 * belly),
-        (-0.70 * half_width, 0.64 * top),
+        (shoulder_y_scale * half_width, shoulder_z_scale * top),
+        (chine_y_scale * half_width, chine_z_scale * belly),
+        (0.0, -belly_scale * belly),
+        (-chine_y_scale * half_width, chine_z_scale * belly),
+        (-shoulder_y_scale * half_width, shoulder_z_scale * top),
     ]
     return [[float(x), float(y), float(z)] for y, z in yz]
 
@@ -35,6 +46,47 @@ def _scaled_body_profile(
     z_scale: float,
 ) -> list[list[float]]:
     return _body_profile_points(x, half_width * y_scale, top * z_scale, belly * z_scale)
+
+
+def _section_point_rows(sections: list[dict[str, Any]]) -> list[dict[str, float | int | str]]:
+    rows: list[dict[str, float | int | str]] = []
+    for section in sections:
+        for index, point in enumerate(section["points"]):
+            x, y, z = point
+            rows.append(
+                {
+                    "section": str(section["name"]),
+                    "point_index": index,
+                    "x_m": float(x),
+                    "y_m": float(y),
+                    "z_m": float(z),
+                }
+            )
+    return rows
+
+
+def _cad_measurements(geometry: VehicleGeometry) -> dict[str, float]:
+    bounds = geometry.mesh.bounds
+    span = bounds[1] - bounds[0]
+    p = geometry.metadata.get("parameters", {})
+    return {
+        "length_m": float(span[0]),
+        "total_span_m": float(span[1]),
+        "height_m": float(span[2]),
+        "x_min_m": float(bounds[0, 0]),
+        "x_max_m": float(bounds[1, 0]),
+        "y_min_m": float(bounds[0, 1]),
+        "y_max_m": float(bounds[1, 1]),
+        "z_min_m": float(bounds[0, 2]),
+        "z_max_m": float(bounds[1, 2]),
+        "core_body_width_m": float(2.0 * p.get("body_half_width", 0.0)),
+        "reference_area_m2": float(geometry.reference_area_m2),
+        "wetted_area_m2": float(geometry.wetted_area_m2),
+        "volume_m3": float(geometry.volume_m3),
+        "payload_length_m": float(geometry.payload_box[0]),
+        "payload_width_m": float(geometry.payload_box[1]),
+        "payload_height_m": float(geometry.payload_box[2]),
+    }
 
 
 def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
@@ -65,13 +117,45 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
         {
             "name": "nose_spherical_match",
             "x_m": float(x1),
-            "points": _body_profile_points(float(x1), min(0.92 * r1, half_width), 0.82 * r1, 0.84 * r1),
+            "points": _body_profile_points(
+                float(x1),
+                min(r1, half_width),
+                float(p["nose_top_scale"]) * r1,
+                float(p["nose_belly_scale"]) * r1,
+                shoulder_y_scale=float(p["nose_shoulder_scale"]),
+                shoulder_z_scale=0.46,
+                chine_y_scale=float(p["nose_chine_scale"]),
+                chine_z_scale=-0.05,
+                belly_scale=1.0,
+            ),
         },
-        {"name": "mid_body", "x_m": float(x2), "points": _body_profile_points(float(x2), half_width, top, belly)},
+        {
+            "name": "mid_body",
+            "x_m": float(x2),
+            "points": _body_profile_points(
+                float(x2),
+                half_width * float(p["forebody_width_scale"]),
+                top * 0.96,
+                belly * float(p["station2_belly_scale"]),
+                shoulder_y_scale=float(p["station2_shoulder_y_scale"]),
+                shoulder_z_scale=float(p["station2_shoulder_z_scale"]),
+                chine_y_scale=float(p["station2_chine_y_scale"]),
+                chine_z_scale=float(p["station2_chine_z_scale"]),
+            ),
+        },
         {
             "name": "aft_body",
             "x_m": float(x3),
-            "points": _scaled_body_profile(float(x3), half_width, top, belly, 0.76, 0.68),
+            "points": _body_profile_points(
+                float(x3),
+                half_width * float(p["station3_width_scale"]),
+                top * 0.64,
+                belly * 0.70,
+                shoulder_y_scale=float(p["station3_shoulder_y_scale"]),
+                shoulder_z_scale=float(p["station3_shoulder_z_scale"]),
+                chine_y_scale=1.0,
+                chine_z_scale=-0.08,
+            ),
         },
     ]
     for x_frac, y_scale, z_scale in (
@@ -97,7 +181,7 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
     fin_root_z = 0.02 * top
     fin_x0 = 0.70 * length
     fin_x1 = 0.995 * length
-    fin_span_y = min(0.070 * length, 1.20 * half_width)
+    fin_span_y = min(0.070 * length, 1.20 * half_width) * float(p.get("fin_span_scale", 1.0))
     fin_rise_z = 0.62 * fin_span_y
     fin_thickness = max(0.022, 0.17 * fin_span_y)
     # Swept, clipped trapezoid in each fin center plane. The STEP exporter
@@ -171,6 +255,15 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
         "schema": "astreia_mrv_onshape_brep_v1",
         "units": "m",
         "note": "Analytic BREP-oriented sections for STEP export; not an arbitrary precision targeting model.",
+        "measurements": _cad_measurements(geometry),
+        "source_parameters": dict(
+            sorted(
+                (str(key), float(value))
+                for key, value in p.items()
+                if isinstance(value, (int, float, np.integer, np.floating))
+            )
+        ),
+        "normalized_rx": dict(sorted((str(key), float(value)) for key, value in geometry.metadata.get("normalized_rx", {}).items())),
         "body": {
             "name": "astreia_mrv_body",
             "sections": sections,
@@ -190,14 +283,127 @@ def export_onshape_brep_spec(geometry: VehicleGeometry, path: str | Path) -> Non
     path.write_text(json.dumps(spec, indent=2), encoding="utf-8")
 
 
+def export_onshape_parameter_csv(geometry: VehicleGeometry, path: str | Path) -> None:
+    """Write named dimensions for Onshape variable studios or manual edits."""
+    path = Path(path)
+    p = geometry.metadata.get("parameters", {})
+    rx = geometry.metadata.get("normalized_rx", {})
+    rows: list[dict[str, str | float]] = []
+    descriptions = {
+        "L_body": "Overall generated body length.",
+        "R_N": "Nose radius used by heating and blunt-ogive geometry.",
+        "theta_N_deg": "Nose spherical-match angle.",
+        "body_half_width": "Core half-width before integrated fin extension.",
+        "body_top_height": "Core upper body height from centerline.",
+        "body_belly_depth": "Core lower body depth from centerline.",
+        "fin_span_scale": "Normalized scale applied to canted aft fin span.",
+        "x_cg_frac": "Conceptual center-of-gravity fraction of body length.",
+    }
+    for name, value in sorted(p.items()):
+        if isinstance(value, (int, float, np.integer, np.floating)):
+            unit = "deg" if name.endswith("_deg") else "m" if name.startswith(("L_", "R_", "body_", "payload_", "dx")) else "dimensionless"
+            rows.append(
+                {
+                    "name": f"mrv_{name}",
+                    "value": float(value),
+                    "unit": unit,
+                    "source": "physical_parameter",
+                    "description": descriptions.get(name, "Generated from configs/mrv3.yaml normalized rx mapping."),
+                }
+            )
+    for name, value in sorted(rx.items()):
+        rows.append(
+            {
+                "name": f"rx_{name}",
+                "value": float(value),
+                "unit": "dimensionless",
+                "source": "normalized_rx",
+                "description": "Original normalized design variable from config.",
+            }
+        )
+    for name, value in sorted(_cad_measurements(geometry).items()):
+        rows.append(
+            {
+                "name": f"measure_{name}",
+                "value": float(value),
+                "unit": "m2" if name.endswith("_m2") else "m3" if name.endswith("_m3") else "m",
+                "source": "generated_measurement",
+                "description": "Measured from generated geometry mesh bounds or metrics.",
+            }
+        )
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["name", "value", "unit", "source", "description"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def export_onshape_loft_sections_csv(geometry: VehicleGeometry, path: str | Path) -> None:
+    spec = _onshape_brep_spec(geometry)
+    with Path(path).open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["section", "point_index", "x_m", "y_m", "z_m"])
+        writer.writeheader()
+        writer.writerows(_section_point_rows(spec["body"]["sections"]))
+
+
+def export_onshape_feature_variables(geometry: VehicleGeometry, path: str | Path) -> None:
+    """Write a small FeatureScript helper that creates named variables in Onshape."""
+    p = geometry.metadata.get("parameters", {})
+    measurements = _cad_measurements(geometry)
+    scalar_rows = [
+        ("mrv_L_body", float(p["L_body"]), "meter"),
+        ("mrv_R_N", float(p["R_N"]), "meter"),
+        ("mrv_theta_N", float(p["theta_N_deg"]), "degree"),
+        ("mrv_body_half_width", float(p["body_half_width"]), "meter"),
+        ("mrv_body_top_height", float(p["body_top_height"]), "meter"),
+        ("mrv_body_belly_depth", float(p["body_belly_depth"]), "meter"),
+        ("mrv_core_body_width", measurements["core_body_width_m"], "meter"),
+        ("mrv_total_span", measurements["total_span_m"], "meter"),
+        ("mrv_height", measurements["height_m"], "meter"),
+        ("mrv_volume", measurements["volume_m3"], "meter ^ 3"),
+        ("mrv_wetted_area", measurements["wetted_area_m2"], "meter ^ 2"),
+        ("mrv_payload_l", measurements["payload_length_m"], "meter"),
+        ("mrv_payload_w", measurements["payload_width_m"], "meter"),
+        ("mrv_payload_h", measurements["payload_height_m"], "meter"),
+    ]
+    lines = [
+        "FeatureScript 2521;",
+        'import(path : "onshape/std/common.fs", version : "2521.0");',
+        "",
+        'annotation { "Feature Type Name" : "Astreia MRV Parameters" }',
+        "export const astreiaMRVParameters = defineFeature(function(context is Context, id is Id, definition is map)",
+        "    precondition",
+        "    {",
+        "    }",
+        "    {",
+        "        // Generated from the same config/THOR pipeline as the MRV STEP handoff.",
+        "        // Use these variables while recreating/editing sketches and loft sections in Onshape.",
+    ]
+    for name, value, unit in scalar_rows:
+        lines.append(f'        setVariable(context, "{name}", {_fmt_float(value)} * {unit});')
+    lines.extend(
+        [
+            "    });",
+            "",
+        ]
+    )
+    Path(path).write_text("\n".join(lines), encoding="utf-8")
+
+
 def export_onshape_readme(path: str | Path) -> None:
     Path(path).write_text(
         "\n".join(
             [
                 "# Astreia-MRV Onshape Handoff",
                 "",
-                "Use `geometry_onshape.step` for a true solid/BREP import in Onshape.",
+                "Use `onshape_step/geometry_onshape.step` for a true solid/BREP import in Onshape.",
                 "The STL/OBJ files are kept only for visual mesh comparison.",
+                "",
+                "STEP imports are solid bodies, but STEP does not preserve the Python/THOR",
+                "feature history. To make edits easier, this folder also includes:",
+                "- `onshape_parameters.csv`: named dimensions, normalized rx values, and generated measurements",
+                "- `onshape_loft_sections.csv`: x/y/z points for each analytic loft section",
+                "- `onshape_variables.fs`: FeatureScript helper that creates common MRV variables",
+                "- `onshape_brep_spec.json`: full analytic body/fin reconstruction spec",
                 "",
                 "Expected STEP parts:",
                 "- `astreia_mrv_body` lofted body",
@@ -547,11 +753,17 @@ def export_geometry(geometry: VehicleGeometry, out_dir: str | Path, extra_metada
     part_names = export_part_meshes(geometry, out)
     export_parts_openscad_assembly(part_names, out / "geometry_parts.scad")
     export_onshape_brep_spec(geometry, out / "onshape_brep_spec.json")
+    export_onshape_parameter_csv(geometry, out / "onshape_parameters.csv")
+    export_onshape_loft_sections_csv(geometry, out / "onshape_loft_sections.csv")
+    export_onshape_feature_variables(geometry, out / "onshape_variables.fs")
     export_onshape_readme(out / "ONSHAPE_README.md")
     metadata = {
         **geometry.metadata,
         "cad_backend": "OpenSCAD mesh handoff plus optional Onshape BREP STEP spec",
         "onshape_brep_spec": str(out / "onshape_brep_spec.json"),
+        "onshape_parameters_csv": str(out / "onshape_parameters.csv"),
+        "onshape_loft_sections_csv": str(out / "onshape_loft_sections.csv"),
+        "onshape_variables_featurescript": str(out / "onshape_variables.fs"),
         "reference_area_m2": geometry.reference_area_m2,
         "reference_length_m": geometry.reference_length_m,
         "volume_m3": geometry.volume_m3,
