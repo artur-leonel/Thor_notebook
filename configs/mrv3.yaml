@@ -40,8 +40,8 @@ constraints:
   max_g_load: 6.0
 
 rx:
-  R_N: 0.80
-  theta_N: 0.50
+  R_N: 0.35
+  theta_N: 0.35
   dx1: 0.45
   dx2: 0.55
   z_2_1: 0.55

@@ -139,6 +139,13 @@ def map_lifting_body_parameters(design: VehicleDesign) -> PhysicalParameters:
         "sweep_deg": interp_from_rx(rx["xw2_xw1"], *bounds["sweep_deg"]),
         "x_cg_frac": interp_from_rx(rx["x_cg"], *bounds["x_cg_frac"]),
     }
+    nose_bluntness = 0.5 * (rx["R_N"] + rx["theta_N"])
+    values["nose_ogive_exponent"] = interp_from_rx(1.0 - nose_bluntness, 1.0, 1.55)
+    values["nose_top_scale"] = interp_from_rx(nose_bluntness, 0.62, 0.78)
+    values["nose_shoulder_scale"] = interp_from_rx(nose_bluntness, 0.36, 0.52)
+    values["nose_chine_scale"] = interp_from_rx(nose_bluntness, 0.62, 0.86)
+    values["nose_belly_scale"] = interp_from_rx(nose_bluntness, 0.56, 0.70)
+    values["forebody_width_scale"] = interp_from_rx(nose_bluntness, 0.74, 0.88)
     values["dx_f_xw4"] = 0.05 * values["L_w"] + rx["dx_f_xw4"] * 0.20 * values["L_w"]
     values["payload_bay_length"] = design.payload.length_m
     values["payload_bay_width"] = design.payload.width_m

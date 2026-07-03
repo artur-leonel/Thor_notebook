@@ -89,7 +89,7 @@ entry,,deorbit_dv_m_s,100,m/s,for auto V_EI
 aero,,cd,0.8,,
 aero,,cl,0.3,,
 aero,,reference_area_m2,0.8763772962426621,m2,updated by MRV geometry
-aero,,nose_radius_m,0.16399999999999998,m,drives heating
+aero,,nose_radius_m,0.128,m,drives heating
 geometry,,length_m,2.0,m,MRV OML generated from configs/mrv3.yaml
 geometry,,width_m,0.43818864812133107,m,MRV generated max y span
 geometry,,s_ref_factor,1.0,frac,S_ref is generated OML reference area
@@ -105,7 +105,7 @@ tps,,conductivity_W_mK,0.15,W/mK,
 tps,,cp_J_kgK,1200,J/kgK,
 tps,,bondline_temp_C,180,C,
 tps,,exposure_time_s,300,s,
-tps,,shield_area_m2,1.3602125240227794,m2,MRV generated wetted area
+tps,,shield_area_m2,1.318459094478078,m2,MRV generated wetted area
 payload,Science module,mass_kg,300,kg,
 payload,Science module,x_m,5.0,m,from nose
 payload,Comm relay,mass_kg,100,kg,

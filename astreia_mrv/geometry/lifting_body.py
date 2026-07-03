@@ -25,17 +25,17 @@ def _contour_points(params: dict[str, float], station: int, x: float, r1: float 
         # early shoulder/chine cues so it does not read as a plain tube.
         yz = np.array(
             [
-                [0.0, 0.70 * r],
-                [0.44 * r, 0.46 * r],
-                [0.76 * r, -0.05 * r],
-                [0.0, -0.62 * r],
-                [-0.76 * r, -0.05 * r],
-                [-0.44 * r, 0.46 * r],
+                [0.0, params["nose_top_scale"] * r],
+                [params["nose_shoulder_scale"] * r, 0.46 * r],
+                [params["nose_chine_scale"] * r, -0.05 * r],
+                [0.0, -params["nose_belly_scale"] * r],
+                [-params["nose_chine_scale"] * r, -0.05 * r],
+                [-params["nose_shoulder_scale"] * r, 0.46 * r],
             ]
         )
     else:
         if station == 2:
-            hw_scale, top_scale, belly_scale = 0.80, 0.96, 0.90
+            hw_scale, top_scale, belly_scale = params["forebody_width_scale"], 0.96, 0.90
         else:
             hw_scale, top_scale, belly_scale = 0.62, 0.64, 0.70
         hw = params["body_half_width"] * hw_scale
@@ -400,6 +400,7 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
         theta = frac * theta_n
         x = rn * (1.0 - math.cos(theta))
         scale = (rn * math.sin(theta)) / max(r1, 1e-9)
+        scale = scale ** p["nose_ogive_exponent"]
         ring = ring1.copy()
         ring[:, 0] = x
         ring[:, 1:] *= scale
