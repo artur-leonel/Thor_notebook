@@ -43,7 +43,7 @@ def _(mo, num, pl, q_peak, t_tps):
         }
     )
     ok = t_bondline < limit
-    mo.vstack(mo.md(f"**Bondline OK:** {ok}"), mo.ui.table(df))
+    mo.vstack([mo.md(f"**Bondline OK:** {ok}"), mo.ui.table(df)])
     return df, k, limit, ok, t_bondline
 
 

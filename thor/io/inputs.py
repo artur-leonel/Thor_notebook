@@ -107,3 +107,34 @@ def item_table(section: str, name_col: str = "item") -> pl.DataFrame:
             row[r["parameter"]] = _parse_value(r["value"])
         rows.append(row)
     return pl.DataFrame(rows)
+
+
+def estimated_dry_mass_kg() -> float:
+    """Dry mass estimate from the mass rows in `thor_inputs.csv`.
+
+    This mirrors notebook 01 when downstream notebooks are run on their own
+    before `vehicle_state.json` has been populated.
+    """
+    growth = num("mass", "growth_allowance", "_config")
+    return sum(float(row["dry_kg"]) * (1.0 + growth) for row in items_with_params("mass", "dry_kg"))
+
+
+def estimated_wet_mass_kg() -> float:
+    return estimated_dry_mass_kg() + num("mass", "propellant_kg", "_config")
+
+
+def total_phase_energy_wh() -> float:
+    return sum(float(row["power_wh"]) for row in phase_rows())
+
+
+def entry_velocity_m_s() -> float:
+    """Configured entry-interface velocity, deriving the auto case from orbit inputs."""
+    override = num("entry", "velocity_m_s")
+    if override > 0.0:
+        return override
+
+    from thor.physics.astro import circular_velocity
+
+    v_circ = circular_velocity(num("orbit", "altitude_km") * 1000.0)
+    dv_deorbit = num("entry", "deorbit_dv_m_s")
+    return max(v_circ - dv_deorbit, 0.0)

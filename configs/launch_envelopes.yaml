@@ -1,0 +1,13 @@
+envelopes:
+  conservative_falcon9_class:
+    max_stowed_length_m: 5.5
+    max_stowed_diameter_m: 4.0
+    max_stowed_width_m: 4.0
+    max_stowed_height_m: 4.0
+    notes: Conservative internal design envelope, not a public launch-provider interface control document.
+  starship_class_placeholder:
+    max_stowed_length_m: 8.0
+    max_stowed_diameter_m: 7.0
+    max_stowed_width_m: 7.0
+    max_stowed_height_m: 7.0
+    notes: Placeholder only; use current provider documentation for real packaging work.

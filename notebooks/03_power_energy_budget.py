@@ -47,10 +47,10 @@ def _(PowerBudget, items, mo, pl):
             "energy_Wh": [i.energy_wh for i in items],
         }
     )
-    mo.vstack(
+    mo.vstack([
         mo.md(f"**Energia total:** {budget.total_wh:.0f} Wh ({budget.total_wh/1000:.1f} kWh)"),
         mo.ui.table(df),
-    )
+    ])
     return budget, df
 
 
@@ -59,18 +59,17 @@ def _(budget, df, load_state, mo, save_state, save_table):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 3))
-    ax.bar(df["phase"], df["energy_Wh"], color="#16a34a")
+    ax.bar(df["phase"].to_list(), df["energy_Wh"].to_list(), color="#16a34a")
     ax.set_ylabel("Energia [Wh]")
     ax.set_title("Orçamento energético por fase")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
-    mo.ui.pyplot(fig)
 
     state = load_state()
     state.power = budget
     save_state(state)
     save_table("power_budget", df)
-    mo.md("✓ Power budget → vehicle_state")
+    mo.vstack([fig, mo.md("✓ Power budget → vehicle_state")])
     return ax, fig, plt, state
 
 

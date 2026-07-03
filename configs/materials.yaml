@@ -1,0 +1,43 @@
+materials:
+  cc_sic:
+    family: carbon-carbon silicon-carbide
+    notes: Practical hot-structure candidate for reusable nose, leading edges, and controls.
+  coated_cc:
+    family: coated carbon-carbon
+    notes: Heritage high-temperature material requiring oxidation protection.
+  pica_class:
+    family: phenolic impregnated carbon ablator
+    notes: Replaceable windward TPS panel candidate.
+  avcoat_class:
+    family: epoxy-novolac ablator
+    notes: Simple capsule/test-article ablator candidate.
+  ceramic_blanket:
+    family: reusable insulation
+    notes: Leeward acreage only in v0.1 assumptions.
+  uhtc_insert:
+    family: UHTC
+    notes: Candidate insert only; not modeled as full aeroshell due density, brittleness, joining, oxidation, and maturity concerns.
+
+zones:
+  nose_cap:
+    preferred: C/C-SiC or coated C/C
+    alternative: Cf/ZrB2-SiC UHTCMC for higher heat flux / lower TRL
+    replaceable: false_or_inspectable
+  leading_edges:
+    preferred: C/C-SiC or SiC/SiC CMC
+    alternative: UHTC insert only if required
+    replaceable: inspectable_or_bolted
+  windward_belly:
+    preferred: replaceable PICA-class ablative tiles/panels
+    alternative: Avcoat-class ablator for simple blunt capsule tests
+    replaceable: true
+  leeward_shell:
+    preferred: ceramic blanket or reusable low-temperature tiles
+    replaceable: false
+  control_surfaces:
+    preferred: C/C-SiC hot structure
+    alternative: SiC/SiC CMC
+    replaceable: inspectable
+  cold_structure:
+    preferred: aluminum-lithium or CFRP behind insulation
+    hot_fittings: titanium, Inconel 718, or equivalent in cold/warm zones only

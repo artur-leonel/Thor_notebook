@@ -12,8 +12,8 @@ def _():
     import polars as pl
 
     from thor.io.handoff import load_state, save_table
-    from thor.io.inputs import num
-    return load_state, mo, num, pl, save_table
+    from thor.io.inputs import num, total_phase_energy_wh
+    return load_state, mo, num, pl, save_table, total_phase_energy_wh
 
 
 @app.cell
@@ -23,9 +23,9 @@ def _(mo):
 
 
 @app.cell
-def _(load_state, num):
+def _(load_state, num, total_phase_energy_wh):
     state = load_state()
-    e_total = state.power.total_wh or 5000
+    e_total = state.power.total_wh or total_phase_energy_wh()
     battery_wh = e_total * num("power", "battery_margin_frac")
     array_power = num("power", "array_power_W")
     return array_power, battery_wh, e_total, state
@@ -36,7 +36,7 @@ def _(array_power, battery_wh, e_total, mo, pl):
     df = pl.DataFrame(
         {
             "parameter": ["E_missão [Wh]", "Bateria [Wh]", "Array [W]"],
-            "value": [round(e_total, 0), round(battery_wh, 0), array_power],
+            "value": [float(round(e_total, 0)), float(round(battery_wh, 0)), float(array_power)],
         }
     )
     mo.ui.table(df)

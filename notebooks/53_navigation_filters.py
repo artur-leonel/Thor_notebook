@@ -11,8 +11,9 @@ def _():
     import marimo as mo
     import polars as pl
 
+    from thor.io.handoff import save_table
     from thor.io.inputs import item_table
-    return item_table, mo, pl
+    return item_table, mo, pl, save_table
 
 
 @app.cell
@@ -31,8 +32,15 @@ def _(item_table, mo, pl):
             "phase": raw["phase"].cast(pl.Utf8),
         }
     )
-    mo.vstack(mo.md("EKF/UKF: fusão IMU + ST + GNSS (placeholder)"), mo.ui.table(df))
+    mo.vstack([mo.md("EKF/UKF: fusão IMU + ST + GNSS (placeholder)"), mo.ui.table(df)])
     return df
+
+
+@app.cell
+def _(df, mo, save_table):
+    save_table("navigation_filters", df)
+    mo.md("✓ Navigation filters → parquet")
+    return
 
 
 if __name__ == "__main__":

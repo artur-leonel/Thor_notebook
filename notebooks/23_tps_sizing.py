@@ -40,10 +40,10 @@ def _(mo, num, q_peak):
     alpha = k / (rho_tps * cp)
     thickness_m = 2 * (alpha * t_peak) ** 0.5 + q_w_m2 * 0.001 / k
     mass_tps = rho_tps * thickness_m * area_tps
-    mo.vstack(
+    mo.vstack([
         mo.md(f"**Espessura TPS:** {thickness_m*1000:.1f} mm"),
         mo.md(f"**Massa TPS:** {mass_tps:.0f} kg → feedback 01_mass_budget"),
-    )
+    ])
     return alpha, area_tps, cp, k, mass_tps, rho_tps, t_peak, thickness_m
 
 

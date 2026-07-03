@@ -24,14 +24,14 @@ def _(mo):
 
 @app.cell
 def _(load_state, num):
-    state = load_state()
-    mp = state.mass.propellant_kg or 600
+    _state = load_state()
+    mp = _state.mass.propellant_kg or num("mass", "propellant_kg", "_config")
     rho_prop = num("propulsion", "rho_propellant_kg_m3")
     ullage = num("propulsion", "ullage_frac")
     volume_m3 = mp / rho_prop * (1 + ullage)
     p_tank = num("propulsion", "tank_pressure_bar") * 1e5
     tank_mass = volume_m3 * num("propulsion", "tank_mass_kg_m3")
-    return mp, p_tank, rho_prop, state, tank_mass, volume_m3
+    return mp, p_tank, rho_prop, tank_mass, volume_m3
 
 
 @app.cell
@@ -48,14 +48,14 @@ def _(mo, mp, p_tank, pl, tank_mass, volume_m3):
 
 @app.cell
 def _(load_state, mo, pl, save_state, save_table, tank_mass):
-    state = load_state()
-    for item in state.mass.items:
+    _state = load_state()
+    for item in _state.mass.items:
         if "Propulsion" in item.name:
             item.dry_kg += tank_mass
-    save_state(state)
+    save_state(_state)
     save_table("propellant_tanks", pl.DataFrame({"tank_mass_kg": [tank_mass]}))
     mo.md("✓ Tanques → mass budget (loop fechado com 01)")
-    return state
+    return
 
 
 if __name__ == "__main__":

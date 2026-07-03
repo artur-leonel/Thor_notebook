@@ -47,10 +47,10 @@ def _(allen_eggers_peak_heat, e, mo, num, traj):
     rho_ei = num("entry", "rho_ei_kg_m3")
     rn = num("aero", "nose_radius_m")
     q_ae, _ = allen_eggers_peak_heat(e.velocity_m_s, rho_ei, rn)
-    mo.vstack(
+    mo.vstack([
         mo.md(f"**Pico g-load:** {g_peak:.2f} g"),
         mo.md(f"**Pico q̇:** {q_peak:.0f} W/cm² (Allen-Eggers ~{q_ae/1e4:.0f} W/cm²)"),
-    )
+    ])
     return g_peak, np, q_ae, q_peak, rn, rho_ei
 
 
@@ -66,7 +66,6 @@ def _(mo, pl, save_table, traj):
     axes[2].plot(traj["t_s"], traj["q_W_cm2"])
     axes[2].set(xlabel="t [s]", ylabel="q̇ [W/cm²]", title="Calor")
     plt.tight_layout()
-    mo.ui.pyplot(fig)
 
     df = pl.DataFrame(
         {
@@ -78,7 +77,7 @@ def _(mo, pl, save_table, traj):
         }
     )
     save_table("entry_trajectory", df)
-    mo.md("✓ Trajetória 3DOF → parquet")
+    mo.vstack([fig, mo.md("✓ Trajetória 3DOF → parquet")])
     return axes, df, fig, plt
 
 

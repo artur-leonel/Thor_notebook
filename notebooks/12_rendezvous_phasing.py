@@ -37,12 +37,12 @@ def _(mo):
 
 @app.cell
 def _(hohmann_delta_v, load_state, num):
-    state = load_state()
+    _state = load_state()
     chaser_alt = num("rendezvous", "chaser_alt_km") * 1000
-    target_alt = state.orbit.altitude_km * 1000 if state.orbit else num("orbit", "altitude_km") * 1000
+    target_alt = _state.orbit.altitude_km * 1000 if _state.orbit else num("orbit", "altitude_km") * 1000
     dv1, dv2 = hohmann_delta_v(chaser_alt, target_alt)
     dv_braking = abs(dv2) + num("rendezvous", "braking_margin_m_s")
-    return chaser_alt, dv1, dv2, dv_braking, state, target_alt
+    return chaser_alt, dv1, dv2, dv_braking, target_alt
 
 
 @app.cell
@@ -54,24 +54,24 @@ def _(dv1, dv2, dv_braking, hill_clohessy_wiltshire, mean_motion, mo, np, num, p
     df = pl.DataFrame(
         {"maneuver": ["Hohmann burn 1", "Hohmann burn 2", "Braking (CW)"], "delta_v_m_s": [dv1, dv2, dv_braking]}
     )
-    mo.vstack(
+    mo.vstack([
         mo.md(f"**ΔV phasing total:** {dv1 + dv2 + dv_braking:.1f} m/s"),
         mo.md(f"Estado relativo final: x={xf[0]:.0f} m, y={xf[1]:.0f} m"),
         mo.ui.table(df),
-    )
+    ])
     return df, dt, n, x0, xf
 
 
 @app.cell
 def _(df, dv_braking, load_state, mo, save_state, save_table):
-    state = load_state()
-    for item in state.delta_v.items:
+    _state = load_state()
+    for item in _state.delta_v.items:
         if "phasing" in item.phase or "rendezvous" in item.phase:
             item.delta_v_m_s = dv_braking if "rendezvous" in item.phase else item.delta_v_m_s
-    save_state(state)
+    save_state(_state)
     save_table("phasing_dv", df)
     mo.md("✓ ΔV braking → delta_v budget")
-    return state
+    return
 
 
 if __name__ == "__main__":

@@ -96,11 +96,11 @@ def _(mission, mo, pl):
             "power_wh": [p.power_wh for p in mission.phases],
         }
     )
-    summary = mo.vstack(
+    summary = mo.vstack([
         mo.md(f"**Duração total:** {mission.total_duration_s/86400:.1f} dias"),
         mo.md(f"**ΔV missão:** {mission.total_delta_v_m_s:.0f} m/s (excl. ascent)"),
         mo.ui.table(df_phases),
-    )
+    ])
     summary
     return (df_phases,)
 
@@ -110,17 +110,16 @@ def _(df_phases, load_state, mission, mo, save_state, save_table):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(8, 3))
-    ax.barh(df_phases["phase"], df_phases["duration_h"], color="#2563eb")
+    ax.barh(df_phases["phase"].to_list(), df_phases["duration_h"].to_list(), color="#2563eb")
     ax.set_xlabel("Duração [h]")
     ax.set_title("Timeline de fases THOR")
     plt.tight_layout()
-    mo.ui.pyplot(fig)
 
     state = load_state()
     state.mission = mission
     save_state(state)
     save_table("mission_phases", df_phases)
-    mo.md("✓ `MissionSpec` → `data/vehicle_state.json` + `mission_phases.parquet`")
+    mo.vstack([fig, mo.md("✓ `MissionSpec` → `data/vehicle_state.json` + `mission_phases.parquet`")])
     return
 
 

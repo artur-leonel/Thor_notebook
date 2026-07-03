@@ -1,4 +1,4 @@
-"""80 — OML paramétrica: nose radius, volume, aero."""
+"""80 — Astreia-MRV OML parametric geometry."""
 
 import marimo
 
@@ -9,54 +9,74 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
-    import numpy as np
     import polars as pl
 
     from thor.io.handoff import load_state, save_state, save_table
-    from thor.io.inputs import num
-    return load_state, mo, np, num, pl, save_state, save_table
+    from thor.io.inputs import txt
+    from thor.io.openscad import export_mrv_to_openscad
+
+    return export_mrv_to_openscad, load_state, mo, pl, save_state, save_table, txt
 
 
 @app.cell
 def _(mo):
-    mo.md("# Camada 8 — OML Parametric\n\nInputs: `geometry` + `aero` in `thor_inputs.csv`")
+    mo.md("# Layer 8 — Astreia-MRV OML\n\nThis notebook uses the MRV YAML config selected in `data/inputs/thor_inputs.csv`, generates the parametric reentry vehicle mesh, and writes OpenSCAD/OBJ/STL outputs.")
     return
 
 
 @app.cell
-def _(load_state, np, num):
-    state = load_state()
-    L = num("geometry", "length_m")
-    W = num("geometry", "width_m")
-    rn = num("aero", "nose_radius_m")
-    x = np.linspace(0, L, 50)
-    z = W / 2 * np.sqrt(np.maximum(0, 1 - ((x - L / 2) / (L / 2)) ** 2))
-    return L, W, rn, state, x, z
+def _(export_mrv_to_openscad, txt):
+    config_path = txt("mrv", "config_path", default="configs/mrv3.yaml")
+    out_dir = txt("mrv", "output_dir", default="outputs/mrv3_notebook")
+    design, geometry, export = export_mrv_to_openscad(config_path, out_dir)
+    return config_path, design, export, geometry, out_dir
 
 
 @app.cell
-def _(L, W, mo, rn, x, z):
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots(figsize=(7, 2))
-    ax.fill_between(x, -z, z, alpha=0.4, color="#2563eb")
-    ax.set(xlabel="x [m]", ylabel="z [m]", title=f"OML THOR (Rn={rn} m)")
-    ax.set_aspect("equal")
-    mo.ui.pyplot(fig)
-    return ax, fig, plt
+def _(design, export, geometry, mo, pl, save_table):
+    mesh_quality = geometry.metadata.get("mesh_quality", {})
+    summary = pl.DataFrame(
+        {
+            "vehicle": [design.scale.name],
+            "family": [design.geometry_family],
+            "recovery": [design.recovery_mode],
+            "volume_m3": [geometry.volume_m3],
+            "wetted_area_m2": [geometry.wetted_area_m2],
+            "reference_area_m2": [geometry.reference_area_m2],
+            "out_dir": [str(export.out_dir)],
+            "scad_path": [str(export.scad_path)],
+            "obj_path": [str(export.obj_path)],
+            "stl_path": [str(export.stl_path)],
+            "geometry_json_path": [str(export.geometry_json_path)],
+            "metrics_json_path": [str(export.metrics_json_path)],
+            "three_view_path": [str(export.three_view_path)],
+            "shaded_render_path": [str(export.shaded_render_path)],
+            "engineering_views_path": [str(export.engineering_views_path)],
+            "control_inspection_path": [str(export.control_inspection_path)],
+            "openscad_available": [export.openscad_available],
+            "watertight": [bool(mesh_quality.get("watertight", False))],
+            "positive_volume": [bool(mesh_quality.get("positive_volume", False))],
+        }
+    )
+    save_table("mrv_oml", summary)
+    mo.vstack([
+        mo.md(f"**OpenSCAD:** `{export.scad_path}`"),
+        mo.ui.table(summary),
+    ])
+    return mesh_quality, summary
 
 
 @app.cell
-def _(L, W, load_state, mo, num, pl, rn, save_state, save_table):
+def _(design, geometry, load_state, mo, save_state):
     state = load_state()
-    state.aero.nose_radius_m = rn
-    state.aero.reference_area_m2 = L * W * num("geometry", "s_ref_factor")
-    state.aero.cd = num("aero", "cd")
-    state.aero.cl = num("aero", "cl")
+    state.aero.reference_area_m2 = geometry.reference_area_m2
+    state.aero.nose_radius_m = geometry.metadata["parameters"].get("R_N", state.aero.nose_radius_m)
+    state.notes["mrv_geometry"] = (
+        f"{design.scale.name} {design.geometry_family}; OpenSCAD export generated from parametric MRV mesh."
+    )
     save_state(state)
-    save_table("oml", pl.DataFrame({"L_m": [L], "W_m": [W], "Rn_m": [rn]}))
-    mo.md("✓ OML → aero R_n, S_ref")
-    return state
+    mo.md("Saved geometry handoff to `vehicle_state.json` and table `mrv_oml`.")
+    return (state,)
 
 
 if __name__ == "__main__":

@@ -27,8 +27,8 @@ def _(mo):
 
 @app.cell
 def _(EntryState, MU_EARTH, R_EARTH, load_state, math, num):
-    state = load_state()
-    alt_orbit = state.orbit.altitude_km * 1000 if state.orbit else num("orbit", "altitude_km") * 1000
+    _state = load_state()
+    alt_orbit = _state.orbit.altitude_km * 1000 if _state.orbit else num("orbit", "altitude_km") * 1000
     r = R_EARTH + alt_orbit
     v_circ = math.sqrt(MU_EARTH / r)
     dv_deorbit = num("entry", "deorbit_dv_m_s")
@@ -68,9 +68,9 @@ def _(entry, mo, pl):
 
 @app.cell
 def _(entry, load_state, mo, pl, save_state, save_table):
-    state = load_state()
-    state.entry = entry
-    save_state(state)
+    _state = load_state()
+    _state.entry = entry
+    save_state(_state)
     save_table(
         "entry_interface",
         pl.DataFrame({"key": ["h", "V", "gamma"], "value": [entry.altitude_m, entry.velocity_m_s, entry.flight_path_angle_deg]}),

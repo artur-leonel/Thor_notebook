@@ -45,13 +45,13 @@ def _(MassBudget, growth, items, mo, pl, propellant_kg):
         }
     )
     budget = MassBudget(items=items, growth_allowance=growth, propellant_kg=propellant_kg)
-    totals = mo.vstack(
+    totals = mo.vstack([
         mo.md(f"**Dry mass:** {budget.dry_mass_kg:.0f} kg"),
         mo.md(f"**Propellant:** {budget.propellant_kg:.0f} kg"),
         mo.md(f"**Wet mass:** {budget.wet_mass_kg:.0f} kg"),
         mo.md(f"**Com margem {growth*100:.0f}%:** {budget.total_with_margin_kg:.0f} kg"),
         mo.ui.table(df),
-    )
+    ])
     totals
     return budget, df, totals
 
@@ -61,15 +61,14 @@ def _(budget, df, load_state, mo, pl, save_state, save_table):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.pie(df["total_kg"], labels=df["subsystem"], autopct="%1.0f%%", startangle=90)
+    ax.pie(df["total_kg"].to_list(), labels=df["subsystem"].to_list(), autopct="%1.0f%%", startangle=90)
     ax.set_title("MBS THOR (com growth allowance)")
-    mo.ui.pyplot(fig)
 
     state = load_state()
     state.mass = budget
     save_state(state)
     save_table("mass_budget", df)
-    mo.md("✓ Mass budget → vehicle_state (loop com propulsão em 42)")
+    mo.vstack([fig, mo.md("✓ Mass budget → vehicle_state (loop com propulsão em 42)")])
     return ax, fig, plt, state
 
 

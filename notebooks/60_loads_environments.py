@@ -12,8 +12,8 @@ def _():
     import polars as pl
 
     from thor.io.handoff import load_state, load_table, save_table
-    from thor.io.inputs import num
-    return load_state, load_table, mo, num, pl, save_table
+    from thor.io.inputs import estimated_wet_mass_kg, num
+    return estimated_wet_mass_kg, load_state, load_table, mo, num, pl, save_table
 
 
 @app.cell
@@ -23,11 +23,11 @@ def _(mo):
 
 
 @app.cell
-def _(load_state, load_table, num):
+def _(estimated_wet_mass_kg, load_state, load_table, num, pl):
     state = load_state()
     traj = load_table("entry_trajectory")
     g_peak = float(traj["g_load"].max()) if traj is not None else num("mission", "max_g_load")
-    m_dock = state.mass.wet_mass_kg or state.mass.dry_mass_kg or 3500
+    m_dock = state.mass.wet_mass_kg or state.mass.dry_mass_kg or estimated_wet_mass_kg()
     f_dock = m_dock * num("docking", "contact_accel_m_s2")
     df = pl.DataFrame(
         {

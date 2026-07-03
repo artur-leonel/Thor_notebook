@@ -1,0 +1,77 @@
+from astreia_mrv.config import load_design
+from astreia_mrv.geometry.lifting_body import generate_lifting_body
+import numpy as np
+import pytest
+import trimesh
+
+
+def test_lifting_body_positive_and_symmetric():
+    design = load_design("configs/mrv3.yaml")
+    geom = generate_lifting_body(design)
+    assert geom.volume_m3 > 0.0
+    assert geom.wetted_area_m2 > 0.0
+    assert geom.metadata["mesh_quality"]["symmetry_error_m"] < 1e-6
+    assert {
+        "body_flap",
+        "right_elevon",
+        "left_elevon",
+        "right_strake",
+        "left_strake",
+        "dorsal_fin",
+        "ventral_fin",
+    }.issubset(geom.control_surfaces)
+    assert all(len(surface.faces) > 0 for surface in geom.control_surfaces.values())
+
+
+def test_lifting_body_controls_are_integrated_with_body_mesh():
+    geom = generate_lifting_body(load_design("configs/mrv3.yaml"))
+    mesh = trimesh.Trimesh(vertices=geom.mesh.vertices, faces=geom.mesh.faces, process=False)
+    assert len(mesh.split(only_watertight=False)) == 1
+    assert {"body_flap", "elevon", "strake", "dorsal_fin", "ventral_fin"}.issubset(set(geom.mesh.face_zone))
+    assert len(geom.control_surfaces["body_flap"].faces) >= 12
+    assert len(geom.control_surfaces["right_elevon"].faces) >= 15
+    assert len(geom.control_surfaces["left_elevon"].faces) >= 15
+    assert len(geom.control_surfaces["right_strake"].faces) >= 100
+    assert len(geom.control_surfaces["left_strake"].faces) >= 100
+    assert len(geom.control_surfaces["dorsal_fin"].faces) >= 20
+    assert len(geom.control_surfaces["ventral_fin"].faces) >= 20
+    fin_geometry = geom.metadata["control_surfaces"]["geometry"]
+    assert fin_geometry["topology"].startswith("single continuous")
+    assert 0.08 <= fin_geometry["per_side_fin_extension_m"] <= 0.13
+
+
+def test_mrv3_lifting_body_has_hypersonic_slender_proportions():
+    geom = generate_lifting_body(load_design("configs/mrv3.yaml"))
+    mesh = trimesh.Trimesh(vertices=geom.mesh.vertices, faces=geom.mesh.faces, process=False)
+    span = mesh.bounds[1] - mesh.bounds[0]
+    core_width = geom.metadata["control_surfaces"]["geometry"]["core_body_width_m"]
+    assert span[0] / core_width >= 7.5
+    assert span[0] / span[1] >= 4.0
+    assert 1.20 <= span[1] / span[2] <= 1.75
+    assert span[1] <= 0.50
+
+
+def test_lifting_body_respects_configured_length_bounds():
+    geom = generate_lifting_body(load_design("configs/mrv3.yaml"))
+    length = geom.reference_length_m
+    x = geom.mesh.vertices[:, 0]
+    assert float(x.min()) == pytest.approx(0.0)
+    assert float(x.max()) == pytest.approx(length)
+    assert not np.any(x > length + 1e-9)
+
+
+def test_lifting_body_aft_closeout_has_finite_truncated_section():
+    geom = generate_lifting_body(load_design("configs/mrv3.yaml"))
+    length = geom.reference_length_m
+    verts = geom.mesh.vertices
+    faces = geom.mesh.faces
+    centroids = verts[faces].mean(axis=1)
+
+    aft_zones = np.array([zone == "aft_closeout" for zone in geom.mesh.face_zone])
+    assert aft_zones.any()
+    assert float(centroids[aft_zones, 0].max()) == pytest.approx(length)
+
+    near_tail = verts[verts[:, 0] >= 0.995 * length]
+    assert len(near_tail) >= 12
+    assert float(np.ptp(near_tail[:, 1])) > 0.050
+    assert float(np.ptp(near_tail[:, 2])) > 0.030

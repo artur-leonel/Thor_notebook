@@ -25,17 +25,21 @@ def _(mo):
 @app.cell
 def _(load_table, num):
     rcs = load_table("rcs_sizing")
+    control_authority = load_table("control_authority")
     torque_req = num("gnc", "torque_required_Nm")
     torque_avail = float(rcs["torque_Nm"][0]) if rcs is not None else num("rcs", "thrust_N") * num("rcs", "arm_m")
-    return rcs, torque_avail, torque_req
+    aero_authority_pass = bool(control_authority["passes"].all()) if control_authority is not None else False
+    return aero_authority_pass, control_authority, rcs, torque_avail, torque_req
 
 
 @app.cell
-def _(mo, pl, torque_avail, torque_req):
+def _(aero_authority_pass, mo, pl, torque_avail, torque_req):
+    rcs_torque_pass = torque_avail >= torque_req
     df = pl.DataFrame(
         {
-            "metric": ["τ_req [Nm]", "τ_RCS [Nm]", "adequate"],
-            "value": [torque_req, torque_avail, torque_avail >= torque_req],
+            "metric": ["tau_req_Nm", "tau_RCS_Nm", "torque_margin_Nm", "aero_authority_pass", "rcs_torque_pass"],
+            "value": [float(torque_req), float(torque_avail), float(torque_avail - torque_req), float(aero_authority_pass), float(rcs_torque_pass)],
+            "status": ["", "", "", "pass" if aero_authority_pass else "needs revision", "pass" if rcs_torque_pass else "needs revision"],
         }
     )
     mo.ui.table(df)
@@ -45,7 +49,7 @@ def _(mo, pl, torque_avail, torque_req):
 @app.cell
 def _(df, mo, save_table):
     save_table("attitude_control", df)
-    mo.md("✓ Autoridade de controle verificada")
+    mo.md("✓ Autoridade de controle → parquet")
     return
 
 

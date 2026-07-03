@@ -1,38 +1,87 @@
-# THOR — Actical Hypersonic Orbital Reentry
+# Astreia-MRV THOR Branch — Reentry Notebooks + OpenSCAD
 
-Lean sizing pipeline for a hypersonic orbital reentry vehicle. Marimo notebooks share state via Pydantic (`data/vehicle_state.json`) and Polars tables (`data/parquet/`). Notebooks cover mission budgets, astrodynamics, reentry, aero, propulsion, GNC, structures, thermal, geometry, and MDAO trades.
+This worktree is a feature branch based on [`Astreia-space/Thor_notebook`](https://github.com/Astreia-space/Thor_notebook), with Astreia-MRV configs, parametric geometry, conceptual aero/heating, constraints, and an OpenSCAD handoff layer added on top.
+
+Marimo notebooks share state via Pydantic (`data/vehicle_state.json`) and Polars tables (`data/parquet/`). The MRV geometry notebooks generate OBJ/STL/JSON plus `geometry.scad` so the vehicle can be opened in OpenSCAD.
 
 ## Setup
 
 ```bash
-cd thor_notebook
+cd /home/jetson-nano-drone/astreia-mrv-thor
 python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -U -r requirements.txt
 pip install -e .
 ```
 
-**Edit all sizing numbers in one spreadsheet:** `data/inputs/thor_inputs.csv`  
-Sections: `mission`, `phase`, `mass`, `delta_v`, `link`, `orbit`, `entry`, `aero`, `geometry`, `propulsion`, `tps`, `docking`, `nav`, `loads`, `thermal`, `power`, `mdao`, `trade`, …  
-Preview: `00_inputs.py` · validate: `./scripts/validate_pipeline.py`
+## Inputs
+
+Edit all sizing numbers in one spreadsheet:
+
+```text
+data/inputs/thor_inputs.csv
+```
+
+Original THOR sections remain available: `mission`, `phase`, `mass`, `delta_v`, `link`, `orbit`, `entry`, `aero`, `geometry`, `propulsion`, `tps`, `docking`, `nav`, `loads`, `thermal`, `power`, `mdao`, `trade`.
+
+MRV additions:
+
+- `mrv`: config path, recovery mode, OpenSCAD output directory.
+- `mrv_payload`: payload box and mass.
 
 ## Run
 
-**Browser** (always use the project venv — do not use system `marimo`)
-
 ```bash
-source .venv/bin/activate
-.venv/bin/marimo edit notebooks/00_mission_conops.py
-# or:
-./scripts/marimo.sh notebooks/00_mission_conops.py
+./scripts/validate_pipeline.py
+./scripts/smoke_check_mrv_oml.py
+./scripts/audit_mrv_output_provenance.py
+PYTHONPATH=$PWD python -m marimo export session notebooks --force-overwrite --continue-on-error
+./scripts/marimo.sh notebooks/80_oml_parametric.py
+./scripts/marimo.sh notebooks/81_packaging_payload.py
+./scripts/marimo.sh notebooks/82_openscad_export.py
 ```
 
-**Cursor / VS Code**
+Suggested order:
 
-1. Install the [marimo extension](https://marketplace.visualstudio.com/items?itemName=marimo-team.vscode-marimo) (`marimo-team.vscode-marimo`)
-2. Open a notebook → marimo icon (top-right), or `Cmd+Shift+P` → `marimo: Open as marimo notebook`
-3. Select interpreter: **`thor_notebook/.venv/bin/python`**
+```text
+00_inputs → 00-04 → 10,12-14 → 20-24 → 30-33 → 40-42
+→ 50-53 → 60-62 → 70-71 → 80-82 → 90-91
+```
 
-## Suggested order
+The default OpenSCAD output is:
 
-`00_inputs` → `00`–`04` → `10`, `12`–`14` → `20`–`24` → `30`–`33` → `40`–`42` → `50`–`53` → `60`–`62` → `70`–`71` → `80`–`81` → `90`–`91`
+```text
+outputs/mrv3_notebook/geometry.scad
+```
+
+For Onshape, use STEP rather than STL/OBJ. STL/OBJ imports as mesh only; the
+STEP handoff imports as solid bodies:
+
+```bash
+PYTHONPATH=.cad-venv/lib/python3.10/site-packages \
+  python scripts/export_onshape_step.py \
+  --spec outputs/mrv3_notebook/onshape_brep_spec.json \
+  --output-dir outputs/mrv3_notebook/onshape_step
+```
+
+Upload this file to Onshape:
+
+```text
+outputs/mrv3_notebook/onshape_step/geometry_onshape.step
+```
+
+The STEP handoff contains a lofted body plus separate solid parts for the left
+and right canted aft fins and center body flap. The mesh exports remain useful
+for visual comparison only.
+
+This branch keeps the original safety framing: landing accuracy is represented as terminal recovery into an authorized recovery zone, not arbitrary precision impact targeting.
+
+The current mass model is conceptual. If dry mass appears unusually high relative to MRV volume or payload target, the pipeline reports a mass sanity warning rather than treating the design as mature.
+
+Notebook 82 now renders a clickable `MRV OML Artifact Handoff` table, and the handoff schema lives in shared `thor/mrv/handoff.py` helpers (`validate_mrv_oml_row`, `artifact_markdown_table`).
+
+The generated `geometry.json` and `metrics.json` include THOR provenance:
+the selected `thor_inputs.csv`, selected MRV YAML config, hashes for both,
+the notebook generator, and the `rx` values used for the current geometry.
+Run `./scripts/audit_mrv_output_provenance.py` to verify the current artifacts
+still match the live THOR CSV/YAML inputs.

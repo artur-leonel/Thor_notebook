@@ -1,0 +1,48 @@
+vehicle:
+  name: MRV-1
+  geometry_family: capsule
+  body_length_m: 1.8
+  payload_target_kg: 100.0
+  reuse_target: 1
+
+payload:
+  name: small_folded_drone_payload
+  mass_kg: 100.0
+  length_m: 0.95
+  width_m: 0.42
+  height_m: 0.30
+  max_g: 8.0
+
+launch_envelope:
+  name: conservative_falcon9_class
+  max_stowed_length_m: 5.5
+  max_stowed_diameter_m: 4.0
+  max_stowed_width_m: 4.0
+  max_stowed_height_m: 4.0
+
+mission:
+  entry_interface_altitude_m: 120000
+  entry_velocity_m_s: 7600
+  flight_path_angle_deg: -1.5
+  target_crossrange_class: low
+  landing_accuracy_requirement_m: 150
+  recovery_zone_authorized: true
+
+recovery:
+  mode: parachute_airbag
+  deploy_mach_max: 0.8
+  deploy_dynamic_pressure_max_pa: 6000
+
+constraints:
+  max_stagnation_heat_flux_w_m2: 1200000
+  max_leading_edge_heat_flux_w_m2: 1500000
+  max_dynamic_pressure_pa: 50000
+  max_g_load: 8.0
+
+rx:
+  R_N: 0.55
+  R_S: 0.35
+  theta_c: 0.45
+  R_m: 0.60
+  L_c: 0.50
+  x_cg: 0.50

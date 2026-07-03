@@ -48,11 +48,11 @@ def _(DeltaVBudget, dv_items, mo, pl):
         }
     )
     onboard = sum(i.delta_v_m_s * (1 + i.margin_frac) for i in dv_items if "launcher" not in i.phase)
-    mo.vstack(
+    mo.vstack([
         mo.md(f"**ΔV onboard (pós-injeção):** {onboard:.0f} m/s"),
         mo.md(f"**ΔV total missão:** {budget.total_m_s:.0f} m/s"),
         mo.ui.table(df),
-    )
+    ])
     return budget, df, onboard
 
 
@@ -61,18 +61,17 @@ def _(budget, df, load_state, mo, save_state, save_table):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 3))
-    ax.bar(df["phase"], df["with_margin_m_s"], color="#dc2626")
+    ax.bar(df["phase"].to_list(), df["with_margin_m_s"].to_list(), color="#dc2626")
     ax.set_ylabel("ΔV [m/s]")
     ax.set_title("Orçamento ΔV THOR")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
-    mo.ui.pyplot(fig)
 
     state = load_state()
     state.delta_v = budget
     save_state(state)
     save_table("delta_v_budget", df)
-    mo.md("✓ ΔV budget → vehicle_state")
+    mo.vstack([fig, mo.md("✓ ΔV budget → vehicle_state")])
     return ax, fig, plt, state
 
 

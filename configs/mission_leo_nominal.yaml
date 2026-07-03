@@ -1,0 +1,10 @@
+mission:
+  entry_interface_altitude_m: 120000
+  entry_velocity_m_s: 7830
+  flight_path_angle_deg: -1.5
+  target_crossrange_class: high
+  recovery_zone_authorized: true
+recovery:
+  mode: parafoil
+  deploy_mach_max: 0.8
+  deploy_dynamic_pressure_max_pa: 6000

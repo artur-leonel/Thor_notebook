@@ -88,24 +88,24 @@ entry,,ballistic_coefficient_kg_m2,200,kg/m2,beta = m/(Cd*A)
 entry,,deorbit_dv_m_s,100,m/s,for auto V_EI
 aero,,cd,0.8,,
 aero,,cl,0.3,,
-aero,,reference_area_m2,10,m2,updated by geometry
-aero,,nose_radius_m,0.5,m,drives heating
-geometry,,length_m,8,m,OML
-geometry,,width_m,3,m,OML
-geometry,,s_ref_factor,0.8,frac,S_ref = L*W*factor
+aero,,reference_area_m2,0.8872327489840561,m2,updated by MRV geometry
+aero,,nose_radius_m,0.16399999999999998,m,drives heating
+geometry,,length_m,2.0,m,MRV OML generated from configs/mrv3.yaml
+geometry,,width_m,0.44361637449202806,m,MRV generated max y span
+geometry,,s_ref_factor,1.0,frac,S_ref is generated OML reference area
 propulsion,,isp_s,325,s,deorbit motor
 propulsion,,deorbit_dv_m_s,100,m/s,
 propulsion,,thrust_N,5000,N,
 propulsion,,rho_propellant_kg_m3,1100,kg/m3,
 propulsion,,ullage_frac,0.05,,
-propulsion,,tank_mass_kg_m3,50,kg/m3 shell heuristic
+propulsion,,tank_mass_kg_m3,50,kg/m3 shell heuristic,
 propulsion,,tank_pressure_bar,25,bar,
 tps,,rho_kg_m3,270,kg/m3,PICA-like
 tps,,conductivity_W_mK,0.15,W/mK,
 tps,,cp_J_kgK,1200,J/kgK,
 tps,,bondline_temp_C,180,C,
 tps,,exposure_time_s,300,s,
-tps,,shield_area_m2,15,m2,
+tps,,shield_area_m2,1.5484422232540669,m2,MRV generated wetted area
 payload,Science module,mass_kg,300,kg,
 payload,Science module,x_m,5.0,m,from nose
 payload,Comm relay,mass_kg,100,kg,
@@ -154,6 +154,9 @@ atmosphere,,n_points,200,,
 entry,,rho_ei_kg_m3,3.9e-7,kg/m3,Allen-Eggers check
 control,,q_dyn_Pa,5000,Pa,
 control,,cm_required,0.05,,
+control,,cl_required,0.03,,
+control,,cn_required,0.02,,
+control,,yaw_rcs_assist_coeff,0.016,,conceptual yaw assist coefficient until 6DOF allocation
 control,,moment_arm_m,2.0,m,
 terminal,,v_terminal_m_s,55,m/s,
 terminal,,glide_slope_deg,4,deg,
@@ -162,10 +165,10 @@ terminal,,main_chute_alt_km,3,km,
 terminal,,glide_alt_km,0.5,km,
 terminal,,drogue_vel_m_s,450,m/s,
 terminal,,main_chute_vel_m_s,120,m/s,
-rcs,,thrust_N,100,N,
+rcs,,thrust_N,400,N,
 rcs,,arm_m,1.5,m,
 rcs,,n_thrusters,12,,
-mass_props,,height_m,1.2,m,inertia estimate
+mass_props,,height_m,0.2780582199488418,m,inertia estimate from MRV generated height
 gnc,,gyro_x_rad_s,0.01,rad/s,demo quaternion
 gnc,,gyro_y_rad_s,0.02,rad/s,
 gnc,,gyro_z_rad_s,-0.005,rad/s,
@@ -188,11 +191,23 @@ power,,battery_margin_frac,1.2,,
 mdao,,iterations,5,,
 mdao,,tps_base_kg,200,kg,
 mdao,,tps_q_factor,0.8,kg per W/cm2,
-nav,IMU gyro,error,0.01 °/s,
+nav,IMU gyro,error,0.01 °/s,,
 nav,IMU gyro,phase,all,,
-nav,IMU accel,error,100 μg,
+nav,IMU accel,error,100 μg,,
 nav,IMU accel,phase,all,,
-nav,Star tracker,error,10 arcsec,
+nav,Star tracker,error,10 arcsec,,
 nav,Star tracker,phase,on-orbit,,
-nav,GNSS,error,5 m,
+nav,GNSS,error,5 m,,
 nav,GNSS,phase,ascent/landing,,
+mrv,,config_path,configs/mrv3.yaml,,Astreia MRV baseline config
+mrv,,geometry_family,lifting_body,,MRV operational branch
+mrv,,output_dir,outputs/mrv3_notebook,,OpenSCAD/mesh outputs from notebooks
+mrv,,recovery_mode,parafoil,,terminal authorized-zone recovery
+mrv,,landing_accuracy_mode,terminal_recovery_authorized_zone,,not arbitrary precision impact targeting
+mrv,,open_scad_file,geometry.scad,,OpenSCAD output from generated mesh
+mrv,,sweep_samples,25,,notebook trade sample count
+mrv_payload,,name,compact_slender_payload,,
+mrv_payload,,mass_kg,300.0,kg,
+mrv_payload,,length_m,1.8,m,
+mrv_payload,,width_m,0.1,m,
+mrv_payload,,height_m,0.17,m,

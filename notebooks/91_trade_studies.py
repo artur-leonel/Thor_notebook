@@ -13,9 +13,9 @@ def _():
     import polars as pl
 
     from thor.io.handoff import save_table
-    from thor.io.inputs import num
+    from thor.io.inputs import entry_velocity_m_s, num
     from thor.physics.entry import integrate_entry_3dof
-    return integrate_entry_3dof, mo, np, num, pl, save_table
+    return entry_velocity_m_s, integrate_entry_3dof, mo, np, num, pl, save_table
 
 
 @app.cell
@@ -25,25 +25,25 @@ def _(mo):
 
 
 @app.cell
-def _(integrate_entry_3dof, num, np):
+def _(entry_velocity_m_s, integrate_entry_3dof, num, np):
     import math
 
     betas = np.linspace(num("trade", "beta_min"), num("trade", "beta_max"), int(num("trade", "beta_steps")))
     h_ei = num("entry", "altitude_m")
     gamma = math.radians(num("entry", "flight_path_angle_deg"))
-    v_ei = num("entry", "velocity_m_s") or 7800.0
+    v_ei = entry_velocity_m_s()
     s_ref = num("trade", "s_ref_m2")
     configs = ["capsule", "lifting_body"]
     rows = []
-    for cfg in configs:
-        cd = num("trade", "cd", cfg)
-        cl = num("trade", "cl", cfg)
+    for _cfg in configs:
+        cd = num("trade", "cd", _cfg)
+        cl = num("trade", "cl", _cfg)
         for beta in betas:
             m = beta * cd * s_ref
             traj = integrate_entry_3dof(h_ei, v_ei, gamma, beta)
             rows.append(
                 {
-                    "config": cfg,
+                    "config": _cfg,
                     "beta": beta,
                     "mass_kg": m,
                     "g_peak": float(traj["g_load"].max()),
@@ -60,13 +60,13 @@ def _(df, mo, pl):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 5))
-    for cfg in df["config"].unique():
-        sub = df.filter(pl.col("config") == cfg)
-        ax.scatter(sub["mass_kg"], sub["q_peak"], label=cfg, s=60)
+    for _cfg in df["config"].unique().to_list():
+        sub = df.filter(pl.col("config") == _cfg)
+        ax.scatter(sub["mass_kg"].to_numpy(), sub["q_peak"].to_numpy(), label=_cfg, s=60)
     ax.set(xlabel="Massa [kg]", ylabel="q_peak [W/cm²]", title="Pareto: massa × calor")
     ax.legend()
     ax.grid(True, alpha=0.3)
-    mo.ui.pyplot(fig)
+    fig
     return ax, fig, plt
 
 

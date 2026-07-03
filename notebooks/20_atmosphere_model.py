@@ -42,12 +42,12 @@ def _(df, mo):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 4))
-    ax.semilogy(df["h_km"], df["rho_us76"], label="US76")
-    ax.semilogy(df["h_km"], df["rho_nrlmsise"], "--", label="NRLMSISE (placeholder)")
+    ax.semilogy(df["h_km"].to_numpy(), df["rho_us76"].to_numpy(), label="US76")
+    ax.semilogy(df["h_km"].to_numpy(), df["rho_nrlmsise"].to_numpy(), "--", label="NRLMSISE (placeholder)")
     ax.set(xlabel="Altitude [km]", ylabel="ρ [kg/m³]")
     ax.legend()
     ax.grid(True, which="both", alpha=0.3)
-    mo.ui.pyplot(fig)
+    fig
     return ax, fig, plt
 
 

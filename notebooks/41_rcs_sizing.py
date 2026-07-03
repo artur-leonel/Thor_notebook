@@ -36,10 +36,10 @@ def _(mo, num, pl):
             "torque_Nm": [torque] * 6,
         }
     )
-    mo.vstack(
+    mo.vstack([
         mo.md(f"**Torque max:** {torque:.0f} N·m ({n_thrusters} thrusters)"),
         mo.ui.table(df),
-    )
+    ])
     return arm, df, n_thrusters, thrust_rcs, torque
 
 

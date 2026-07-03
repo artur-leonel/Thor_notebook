@@ -69,14 +69,13 @@ def _(df, mo, save_state, save_table, state):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(6, 3))
-    ax.plot(df["iter"], df["m_dry"], "o-", label="m_dry")
+    ax.plot(df["iter"].to_numpy(), df["m_dry"].to_numpy(), "o-", label="m_dry")
     ax.set(xlabel="iteração", ylabel="kg", title="Convergência MDAO")
     ax.legend()
-    mo.ui.pyplot(fig)
 
     save_state(state)
     save_table("mdao_convergence", df)
-    mo.md("✓ Veículo convergido → vehicle_state.json")
+    mo.vstack([fig, mo.md("✓ Veículo convergido → vehicle_state.json")])
     return ax, fig, plt
 
 

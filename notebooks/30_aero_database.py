@@ -12,9 +12,12 @@ def _():
     import numpy as np
     import polars as pl
 
+    from astreia_mrv.analysis.aerodynamics import aerodynamic_coefficients
+    from astreia_mrv.config import load_design
+    from astreia_mrv.geometry.lifting_body import generate_lifting_body
     from thor.io.handoff import save_table
-    from thor.io.inputs import float_list, num
-    return float_list, mo, np, num, pl, save_table
+    from thor.io.inputs import float_list, num, txt
+    return aerodynamic_coefficients, float_list, generate_lifting_body, load_design, mo, np, num, pl, save_table, txt
 
 
 @app.cell
@@ -24,22 +27,31 @@ def _(mo):
 
 
 @app.cell
-def _(float_list, np, num, pl):
+def _(aerodynamic_coefficients, float_list, generate_lifting_body, load_design, np, num, pl, txt):
+    config_path = txt("mrv", "config_path", default="configs/mrv3.yaml")
+    geometry = generate_lifting_body(load_design(config_path))
     machs = float_list("aero_db", "mach_list")
     alphas = np.linspace(num("aero_db", "alpha_min"), num("aero_db", "alpha_max"), int(num("aero_db", "alpha_steps")))
-    cd0 = num("aero_db", "cd0")
-    cd_a = num("aero_db", "cd_alpha_coef")
-    cl_a = num("aero_db", "cl_alpha_coef")
-    cm_a = num("aero_db", "cm_alpha_coef")
     rows = []
-    for M in machs:
+    for _mach in machs:
         for a in alphas:
-            cd = cd0 + 0.1 * max(0, M - 0.9) ** 2 + cd_a * abs(a) + (0.5 if M > 5 else 0) * (a / 20) ** 2
-            cl = cl_a * a * (1 if M < 10 else 0.6)
-            cm = cm_a * a
-            rows.append({"Mach": M, "alpha_deg": a, "Cd": cd, "Cl": cl, "Cm": cm})
+            coeff = aerodynamic_coefficients(geometry, mach=float(_mach), alpha_deg=float(a))
+            rows.append(
+                {
+                    "Mach": _mach,
+                    "alpha_deg": a,
+                    "Cd": coeff["CD"],
+                    "Cl": coeff["CL"],
+                    "Cm": coeff["Cm"],
+                    "CY": coeff["CY"],
+                    "Cl_roll": coeff["Cl"],
+                    "Cn_yaw": coeff["Cn"],
+                    "x_cp_m": coeff["x_cp_m"],
+                    "source": "Astreia MRV mesh",
+                }
+            )
     df = pl.DataFrame(rows)
-    return alphas, cd0, df, machs, rows
+    return alphas, config_path, df, geometry, machs, rows
 
 
 @app.cell
@@ -47,19 +59,19 @@ def _(df, mo, pl):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 4))
-    for M in df["Mach"].unique().sort():
-        sub = df.filter(pl.col("Mach") == M)
-        ax.plot(sub["alpha_deg"], sub["Cl"], label=f"M={M}")
+    for _mach in df["Mach"].unique().sort().to_list():
+        sub = df.filter(pl.col("Mach") == _mach)
+        ax.plot(sub["alpha_deg"].to_numpy(), sub["Cl"].to_numpy(), label=f"M={_mach}")
     ax.set(xlabel="α [deg]", ylabel="Cl", title="Cl(α) por Mach")
     ax.legend(fontsize=8)
-    mo.ui.pyplot(fig)
+    fig
     return ax, fig, plt
 
 
 @app.cell
-def _(df, mo, save_table):
+def _(config_path, df, mo, save_table):
     save_table("aero_database", df)
-    mo.md("✓ AeroDB → parquet")
+    mo.md(f"✓ MRV mesh AeroDB from `{config_path}` → parquet")
     return
 
 

@@ -5,3 +5,8 @@ matplotlib
 numpy
 pydantic>=2
 duckdb
+pyyaml
+scipy
+trimesh
+meshio
+pytest

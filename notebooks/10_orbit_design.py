@@ -51,7 +51,7 @@ def _(circular_velocity, mean_motion, mo, orbit, pl):
                 orbit.inclination_deg,
                 round(vc, 1),
                 round(period_s / 60, 1),
-                f"{n:.2e}",
+                n,
             ],
         }
     )

@@ -1,0 +1,72 @@
+vehicle:
+  name: MRV-2
+  geometry_family: lifting_body
+  body_length_m: 2.5
+  payload_target_kg: 200.0
+  reuse_target: 2
+
+payload:
+  name: medium_folded_drone_payload
+  mass_kg: 200.0
+  length_m: 1.35
+  width_m: 0.58
+  height_m: 0.38
+  max_g: 7.0
+
+launch_envelope:
+  name: conservative_falcon9_class
+  max_stowed_length_m: 5.5
+  max_stowed_diameter_m: 4.0
+  max_stowed_width_m: 4.0
+  max_stowed_height_m: 4.0
+
+mission:
+  entry_interface_altitude_m: 120000
+  entry_velocity_m_s: 7830
+  flight_path_angle_deg: -1.5
+  target_crossrange_class: medium
+  landing_accuracy_requirement_m: 25
+  recovery_zone_authorized: true
+
+recovery:
+  mode: parafoil
+  deploy_mach_max: 0.8
+  deploy_dynamic_pressure_max_pa: 6000
+
+constraints:
+  max_stagnation_heat_flux_w_m2: 1200000
+  max_leading_edge_heat_flux_w_m2: 1500000
+  max_dynamic_pressure_pa: 50000
+  max_g_load: 7.0
+
+rx:
+  R_N: 0.80
+  theta_N: 0.50
+  dx1: 0.45
+  dx2: 0.50
+  z_2_1: 0.55
+  y_2_2: 0.65
+  z_2_2: 0.40
+  y_2_3: 0.55
+  z_2_3: 0.35
+  z_2_4: 0.15
+  z_3_1: 0.55
+  y_3_2: 0.75
+  z_3_2: 0.45
+  y_3_3: 0.60
+  z_3_3: 0.25
+  R_LE: 0.50
+  theta_LE: 0.30
+  t_mid: 0.60
+  L_mid: 0.35
+  L_w: 0.45
+  xw2_xw1: 0.45
+  xw3_xw1: 0.35
+  xw4_xw1: 0.30
+  yw1: 0.45
+  yw3: 0.55
+  dx_f_xw4: 0.60
+  theta_f: 0.35
+  f_el: 0.75
+  L_bf: 0.35
+  x_cg: 0.50

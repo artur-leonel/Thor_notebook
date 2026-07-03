@@ -12,8 +12,8 @@ def _():
     import polars as pl
 
     from thor.io.handoff import load_state, save_table
-    from thor.io.inputs import num
-    return load_state, mo, num, pl, save_table
+    from thor.io.inputs import estimated_dry_mass_kg, num
+    return estimated_dry_mass_kg, load_state, mo, num, pl, save_table
 
 
 @app.cell
@@ -23,12 +23,12 @@ def _(mo):
 
 
 @app.cell
-def _(load_state, num):
+def _(estimated_dry_mass_kg, load_state, num):
     state = load_state()
     m_struct = num("structure", "m_structure_kg")
     sigma_allow = num("structure", "sigma_allow_Pa")
     load_g = num("structure", "load_g")
-    mass = state.mass.dry_mass_kg or 3500
+    mass = state.mass.dry_mass_kg or estimated_dry_mass_kg()
     area_load = mass * 9.81 * load_g / sigma_allow
     return area_load, load_g, m_struct, mass, sigma_allow, state
 
