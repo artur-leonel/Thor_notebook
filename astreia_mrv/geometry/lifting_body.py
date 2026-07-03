@@ -25,19 +25,19 @@ def _contour_points(params: dict[str, float], station: int, x: float, r1: float 
         # early shoulder/chine cues so it does not read as a plain tube.
         yz = np.array(
             [
-                [0.0, 0.76 * r],
-                [0.54 * r, 0.50 * r],
-                [0.94 * r, -0.06 * r],
-                [0.0, -0.68 * r],
-                [-0.94 * r, -0.06 * r],
-                [-0.54 * r, 0.50 * r],
+                [0.0, 0.70 * r],
+                [0.44 * r, 0.46 * r],
+                [0.76 * r, -0.05 * r],
+                [0.0, -0.62 * r],
+                [-0.76 * r, -0.05 * r],
+                [-0.44 * r, 0.46 * r],
             ]
         )
     else:
         if station == 2:
-            hw_scale, top_scale, belly_scale = 1.0, 1.0, 0.94
+            hw_scale, top_scale, belly_scale = 0.80, 0.96, 0.90
         else:
-            hw_scale, top_scale, belly_scale = 0.60, 0.62, 0.68
+            hw_scale, top_scale, belly_scale = 0.62, 0.64, 0.70
         hw = params["body_half_width"] * hw_scale
         top = params["body_top_height"] * top_scale
         belly = params["body_belly_depth"] * belly_scale
@@ -317,14 +317,14 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
             t = np.clip((root[0] - x0) / max(x1 - x0, 1e-9), 0.0, 1.0)
             leading = float(_smoothstep(0.0, 0.24, t))
             trailing = 1.0 - 0.38 * float(_smoothstep(0.74, 1.0, t))
-            profile = max(0.08, leading * trailing)
+            profile = max(0.025, leading * trailing)
             span = span_max * profile
             root_side = max(abs(upper[1]), abs(lower[1]))
             for row_index, span_frac in enumerate(span_fracs, start=1):
                 x_panel = root[0] + span_frac * span_max * 0.26 * (1.0 - t)
                 y_panel = sign * (root_side + span * span_frac)
                 z_center = root[2] + span * (0.18 + 0.92 * span_frac)
-                local_thickness = thickness * (1.0 - 0.22 * span_frac)
+                local_thickness = thickness * (0.30 + 0.70 * profile) * (1.0 - 0.22 * span_frac)
                 upper_rows[row_index].append(len(vertices))
                 vertices.append([float(x_panel), float(y_panel), float(z_center + 0.5 * local_thickness)])
                 lower_rows[row_index].append(len(vertices))
@@ -413,11 +413,12 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
 
     taper_rings = []
     for x_frac, y_scale, z_scale in (
-        (0.72, 0.70, 0.76),
-        (0.80, 0.60, 0.66),
-        (0.88, 0.49, 0.54),
-        (0.94, 0.37, 0.42),
-        (0.98, 0.30, 0.34),
+        (0.70, 0.82, 0.86),
+        (0.76, 0.76, 0.80),
+        (0.84, 0.64, 0.68),
+        (0.91, 0.52, 0.56),
+        (0.965, 0.42, 0.46),
+        (0.99, 0.40, 0.43),
         (1.000, 0.40, 0.42),
     ):
         ring = ring3.copy()
@@ -611,16 +612,16 @@ def _tag_integrated_control_surfaces(
     )
     right_strake_mask = (
         (x >= 0.52 * l)
-        & (x < 0.70 * l)
-        & (y >= 0.62 * half_width)
+        & (x < 0.72 * l)
+        & (y >= 0.50 * half_width)
         & (y <= 1.01 * outer_half_width)
         & (z >= -0.62 * belly)
         & (z <= 0.28 * top)
     )
     left_strake_mask = (
         (x >= 0.52 * l)
-        & (x < 0.70 * l)
-        & (y <= -0.62 * half_width)
+        & (x < 0.72 * l)
+        & (y <= -0.50 * half_width)
         & (y >= -1.01 * outer_half_width)
         & (z >= -0.62 * belly)
         & (z <= 0.28 * top)
