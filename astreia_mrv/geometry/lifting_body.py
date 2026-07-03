@@ -21,29 +21,34 @@ from astreia_mrv.parameters import PhysicalParameters, map_lifting_body_paramete
 def _contour_points(params: dict[str, float], station: int, x: float, r1: float | None = None) -> np.ndarray:
     if station == 1:
         r = float(r1)
-        # Blunt, slightly faceted nose section that blends into the chine body.
+        # Blunt hypersonic nose section: rounded enough for heating, but with
+        # early shoulder/chine cues so it does not read as a plain tube.
         yz = np.array(
             [
-                [0.0, 0.82 * r],
-                [0.68 * r, 0.48 * r],
-                [1.00 * r, -0.16 * r],
-                [0.0, -0.84 * r],
-                [-1.00 * r, -0.16 * r],
-                [-0.68 * r, 0.48 * r],
+                [0.0, 0.76 * r],
+                [0.54 * r, 0.50 * r],
+                [0.94 * r, -0.06 * r],
+                [0.0, -0.68 * r],
+                [-0.94 * r, -0.06 * r],
+                [-0.54 * r, 0.50 * r],
             ]
         )
     else:
-        hw = params["body_half_width"] * (0.76 if station == 3 else 1.0)
-        top = params["body_top_height"] * (0.58 if station == 3 else 1.0)
-        belly = params["body_belly_depth"] * (0.74 if station == 3 else 1.0)
+        if station == 2:
+            hw_scale, top_scale, belly_scale = 1.0, 1.0, 0.94
+        else:
+            hw_scale, top_scale, belly_scale = 0.60, 0.62, 0.68
+        hw = params["body_half_width"] * hw_scale
+        top = params["body_top_height"] * top_scale
+        belly = params["body_belly_depth"] * belly_scale
         yz = np.array(
             [
                 [0.0, top],
-                [0.70 * hw, 0.64 * top],
-                [1.02 * hw, -0.12 * belly],
-                [0.0, -belly],
-                [-1.02 * hw, -0.12 * belly],
-                [-0.70 * hw, 0.64 * top],
+                [0.58 * hw, 0.50 * top],
+                [1.00 * hw, -0.08 * belly],
+                [0.0, -0.92 * belly],
+                [-1.00 * hw, -0.08 * belly],
+                [-0.58 * hw, 0.50 * top],
             ]
         )
     return np.column_stack([np.full(6, x), yz[:, 0], yz[:, 1]])
@@ -265,7 +270,7 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
     x0 = 0.74 * l
     x1 = 0.992 * l
     elevon_break = 0.865 * l
-    span_max = min(0.070 * l, 1.20 * half_width)
+    span_max = min(0.085 * l, 1.40 * half_width)
     thickness = max(0.032, 0.30 * span_max)
     span_fracs = (0.45, 0.78, 1.0)
 
@@ -408,12 +413,12 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
 
     taper_rings = []
     for x_frac, y_scale, z_scale in (
-        (0.74, 0.88, 0.90),
-        (0.82, 0.80, 0.82),
-        (0.90, 0.68, 0.70),
-        (0.955, 0.54, 0.56),
-        (0.985, 0.40, 0.42),
-        (1.000, 0.30, 0.34),
+        (0.72, 0.70, 0.76),
+        (0.80, 0.60, 0.66),
+        (0.88, 0.49, 0.54),
+        (0.94, 0.37, 0.42),
+        (0.98, 0.30, 0.34),
+        (1.000, 0.40, 0.42),
     ):
         ring = ring3.copy()
         ring[:, 0] = l * x_frac
