@@ -37,7 +37,7 @@ def test_lifting_body_controls_are_integrated_with_body_mesh():
     assert len(geom.control_surfaces["ventral_fin"].faces) >= 12
     fin_geometry = geom.metadata["control_surfaces"]["geometry"]
     assert fin_geometry["topology"].startswith("single continuous")
-    assert 0.08 <= fin_geometry["per_side_fin_extension_m"] <= 0.13
+    assert 0.035 <= fin_geometry["per_side_fin_extension_m"] <= 0.09
 
 
 def test_mrv3_lifting_body_has_hypersonic_slender_proportions():
@@ -45,10 +45,17 @@ def test_mrv3_lifting_body_has_hypersonic_slender_proportions():
     mesh = trimesh.Trimesh(vertices=geom.mesh.vertices, faces=geom.mesh.faces, process=False)
     span = mesh.bounds[1] - mesh.bounds[0]
     core_width = geom.metadata["control_surfaces"]["geometry"]["core_body_width_m"]
-    assert span[0] / core_width >= 7.5
-    assert span[0] / span[1] >= 4.0
-    assert 1.20 <= span[1] / span[2] <= 1.75
-    assert span[1] <= 0.50
+    assert 3.0 <= span[0] / core_width <= 3.8
+    assert 2.6 <= span[0] / span[1] <= 3.2
+    assert 1.20 <= span[1] / span[2] <= 1.65
+    assert 0.60 <= span[1] <= 0.75
+
+
+def test_mrv3_payload_volume_has_conceptual_packaging_margin():
+    design = load_design("configs/mrv3.yaml")
+    geom = generate_lifting_body(design)
+    payload_volume = design.payload.length_m * design.payload.width_m * design.payload.height_m
+    assert payload_volume / geom.volume_m3 <= 0.60
 
 
 def test_lifting_body_respects_configured_length_bounds():

@@ -88,10 +88,10 @@ entry,,ballistic_coefficient_kg_m2,200,kg/m2,beta = m/(Cd*A)
 entry,,deorbit_dv_m_s,100,m/s,for auto V_EI
 aero,,cd,0.8,,
 aero,,cl,0.3,,
-aero,,reference_area_m2,0.9137651982786046,m2,updated by MRV geometry
+aero,,reference_area_m2,1.391017192033834,m2,updated by MRV geometry
 aero,,nose_radius_m,0.128,m,drives heating
 geometry,,length_m,2.0,m,MRV OML generated from configs/mrv3.yaml
-geometry,,width_m,0.4568825991393023,m,MRV generated max y span
+geometry,,width_m,0.695508596016917,m,MRV generated max y span
 geometry,,s_ref_factor,1.0,frac,S_ref is generated OML reference area
 propulsion,,isp_s,325,s,deorbit motor
 propulsion,,deorbit_dv_m_s,100,m/s,
@@ -105,7 +105,7 @@ tps,,conductivity_W_mK,0.15,W/mK,
 tps,,cp_J_kgK,1200,J/kgK,
 tps,,bondline_temp_C,180,C,
 tps,,exposure_time_s,300,s,
-tps,,shield_area_m2,1.4523839173672162,m2,MRV generated wetted area
+tps,,shield_area_m2,2.6408230541876736,m2,MRV generated wetted area
 payload,Science module,mass_kg,300,kg,
 payload,Science module,x_m,5.0,m,from nose
 payload,Comm relay,mass_kg,100,kg,
@@ -168,7 +168,7 @@ terminal,,main_chute_vel_m_s,120,m/s,
 rcs,,thrust_N,400,N,
 rcs,,arm_m,1.5,m,
 rcs,,n_thrusters,12,,
-mass_props,,height_m,0.26379166957394273,m,inertia estimate from MRV generated height
+mass_props,,height_m,0.4949569091240251,m,inertia estimate from MRV generated height
 gnc,,gyro_x_rad_s,0.01,rad/s,demo quaternion
 gnc,,gyro_y_rad_s,0.02,rad/s,
 gnc,,gyro_z_rad_s,-0.005,rad/s,
@@ -206,8 +206,8 @@ mrv,,recovery_mode,parafoil,,terminal authorized-zone recovery
 mrv,,landing_accuracy_mode,terminal_recovery_authorized_zone,,not arbitrary precision impact targeting
 mrv,,open_scad_file,geometry.scad,,OpenSCAD output from generated mesh
 mrv,,sweep_samples,25,,notebook trade sample count
-mrv_payload,,name,compact_slender_payload,,
+mrv_payload,,name,compact_dense_payload,,
 mrv_payload,,mass_kg,300.0,kg,
-mrv_payload,,length_m,1.8,m,
-mrv_payload,,width_m,0.1,m,
-mrv_payload,,height_m,0.17,m,
+mrv_payload,,length_m,1.3,m,
+mrv_payload,,width_m,0.28,m,
+mrv_payload,,height_m,0.28,m,

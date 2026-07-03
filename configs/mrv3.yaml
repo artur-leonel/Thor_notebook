@@ -6,11 +6,11 @@ vehicle:
   reuse_target: 3
 
 payload:
-  name: compact_slender_payload
+  name: compact_dense_payload
   mass_kg: 300.0
-  length_m: 1.8
-  width_m: 0.10
-  height_m: 0.17
+  length_m: 1.3
+  width_m: 0.28
+  height_m: 0.28
   max_g: 6.0
 
 launch_envelope:

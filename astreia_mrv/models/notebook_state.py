@@ -12,7 +12,7 @@ class DesignState(BaseModel):
     recovery_mode: str = "parafoil"
     body_length_m: float = 2.0
     payload_mass_kg: float = 300.0
-    payload_box_m: tuple[float, float, float] = (1.8, 0.10, 0.17)
+    payload_box_m: tuple[float, float, float] = (1.3, 0.28, 0.28)
     rx: dict[str, float] = Field(default_factory=dict)
 
 
