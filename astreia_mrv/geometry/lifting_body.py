@@ -34,12 +34,12 @@ def _contour_points(params: dict[str, float | str], station: int, x: float, r1: 
         if nose_profile_code == 1:
             yz = np.array(
                 [
-                    [0.0, 0.86 * r],
-                    [0.54 * r, 0.50 * r],
-                    [0.86 * r, -0.02 * r],
-                    [0.0, -0.82 * r],
-                    [-0.86 * r, -0.02 * r],
-                    [-0.54 * r, 0.50 * r],
+                    [0.0, 0.94 * r],
+                    [0.82 * r, 0.47 * r],
+                    [0.82 * r, -0.47 * r],
+                    [0.0, -0.94 * r],
+                    [-0.82 * r, -0.47 * r],
+                    [-0.82 * r, 0.47 * r],
                 ]
             )
         elif nose_profile_code == 2:
@@ -449,6 +449,9 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
             x = rn * (1.0 - math.cos(theta))
             scale = (rn * math.sin(theta)) / max(r1, 1e-9)
             scale = scale ** float(p["nose_ogive_exponent"])
+        elif nose_profile_code == 1:
+            x = x1 * frac
+            scale = 0.42 * math.sqrt(frac) + 0.58 * frac
         else:
             x = x1 * frac
             scale = frac
@@ -457,9 +460,17 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
         ring[:, 1:] *= scale
         nose_rings.append(ring)
 
+    path_rings = [ring1, ring2, ring3]
+    if nose_profile_code in {1, 2}:
+        blend = 0.40 if nose_profile_code == 1 else 0.34
+        x_blend = x1 + blend * (x2 - x1)
+        ring_blend = (1.0 - blend) * ring1 + blend * ring2
+        ring_blend[:, 0] = x_blend
+        path_rings = [ring1, ring_blend, ring2, ring3]
+
     paths = []
     for j in range(ring_size):
-        pts = np.vstack([ring1[j], ring2[j], ring3[j]])
+        pts = np.vstack([ring[j] for ring in path_rings])
         paths.append(sample_open_hermite(pts, longitudinal_samples))
     fuselage_rings = [np.asarray([paths[j][i] for j in range(ring_size)]) for i in range(1, len(paths[0]))]
 

@@ -112,13 +112,13 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
     if nose_profile_code == 1:
         nose_points = _body_profile_points(
             float(x1),
-            min(0.86 * r1, half_width),
-            0.86 * r1,
-            0.82 * r1,
-            shoulder_y_scale=0.54,
-            shoulder_z_scale=0.50,
-            chine_y_scale=0.86,
-            chine_z_scale=-0.02,
+            min(0.82 * r1, half_width),
+            0.94 * r1,
+            0.94 * r1,
+            shoulder_y_scale=0.82,
+            shoulder_z_scale=0.47,
+            chine_y_scale=0.82,
+            chine_z_scale=-0.47,
             belly_scale=1.0,
         )
     elif nose_profile_code == 2:
