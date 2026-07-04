@@ -230,6 +230,19 @@ def _draw_projection_mesh(
     ordered_zones = [zones[int(idx)] for idx in ordered_indices]
     ordered_polys = [face[:, axes] for face in ordered_tri]
 
+    footprint_polys = [face[:, axes] for face in tri]
+    if footprint_polys:
+        ax.add_collection(
+            PolyCollection(
+                footprint_polys,
+                facecolors=[to_rgb(BODY_COLOR) + (0.26,)] * len(footprint_polys),
+                edgecolors="none",
+                linewidths=0.0,
+                alpha=1.0,
+                zorder=1,
+            )
+        )
+
     normals = _face_normals(ordered_tri)
     shade = np.clip(0.48 + 0.52 * np.abs(normals[:, view_axis]), 0.42, 1.0)
     base = np.asarray(to_rgb(BODY_COLOR))
@@ -249,11 +262,11 @@ def _draw_projection_mesh(
             )
         )
 
-    all_segments = _projected_edge_segments(tri, axes)
-    if all_segments:
+    visible_segments = _projected_edge_segments(ordered_tri, axes)
+    if visible_segments:
         ax.add_collection(
             LineCollection(
-                all_segments,
+                visible_segments,
                 colors=BODY_EDGE_COLOR,
                 linewidths=0.045,
                 alpha=0.52,
