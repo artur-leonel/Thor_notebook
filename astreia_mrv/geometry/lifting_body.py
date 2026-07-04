@@ -224,8 +224,8 @@ def _apply_tail_keel_stabilizers(surface: SurfaceMesh, params: dict[str, float])
     dorsal_skin = _smoothstep(0.30 * local_top, 0.82 * local_top, z) * center_weight
     ventral_skin = _smoothstep(0.30 * local_belly, 0.82 * local_belly, -z) * center_weight
 
-    dorsal_height = min(0.036 * l, 0.82 * half_width)
-    ventral_height = min(0.030 * l, 0.72 * half_width)
+    dorsal_height = min(0.046 * l, 0.92 * half_width)
+    ventral_height = min(0.038 * l, 0.82 * half_width)
     vertices[:, 2] += dorsal_height * tail_window * dorsal_skin
     vertices[:, 2] -= ventral_height * tail_window * ventral_skin
 
@@ -282,7 +282,7 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
     x0 = 0.70 * l
     x1 = 0.992 * l
     elevon_break = 0.865 * l
-    span_max = min(0.073 * l, 1.25 * half_width) * params["fin_span_scale"]
+    span_max = min(0.090 * l, 1.45 * half_width) * params["fin_span_scale"]
     thickness = max(0.032, 0.30 * span_max)
     span_fracs = (0.45, 0.78, 1.0)
 

@@ -47,9 +47,9 @@ def test_mrv3_lifting_body_has_hypersonic_slender_proportions():
     span = mesh.bounds[1] - mesh.bounds[0]
     core_width = geom.metadata["control_surfaces"]["geometry"]["core_body_width_m"]
     assert 3.0 <= span[0] / core_width <= 3.8
-    assert 2.6 <= span[0] / span[1] <= 3.2
+    assert 2.45 <= span[0] / span[1] <= 3.2
     assert 1.20 <= span[1] / span[2] <= 1.65
-    assert 0.60 <= span[1] <= 0.75
+    assert 0.60 <= span[1] <= 0.82
 
 
 def test_mrv3_payload_volume_has_conceptual_packaging_margin():
