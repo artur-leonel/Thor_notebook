@@ -105,7 +105,7 @@ tps,,conductivity_W_mK,0.15,W/mK,
 tps,,cp_J_kgK,1200,J/kgK,
 tps,,bondline_temp_C,180,C,
 tps,,exposure_time_s,300,s,
-tps,,shield_area_m2,2.79741536216113,m2,MRV generated wetted area
+tps,,shield_area_m2,2.834426156717519,m2,MRV generated wetted area
 payload,Science module,mass_kg,300,kg,
 payload,Science module,x_m,5.0,m,from nose
 payload,Comm relay,mass_kg,100,kg,
@@ -168,7 +168,7 @@ terminal,,main_chute_vel_m_s,120,m/s,
 rcs,,thrust_N,400,N,
 rcs,,arm_m,1.5,m,
 rcs,,n_thrusters,12,,
-mass_props,,height_m,0.4888902793417143,m,inertia estimate from MRV generated height
+mass_props,,height_m,0.488624,m,inertia estimate from MRV generated height
 gnc,,gyro_x_rad_s,0.01,rad/s,demo quaternion
 gnc,,gyro_y_rad_s,0.02,rad/s,
 gnc,,gyro_z_rad_s,-0.005,rad/s,

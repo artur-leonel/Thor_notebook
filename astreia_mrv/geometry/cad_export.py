@@ -48,6 +48,54 @@ def _scaled_body_profile(
     return _body_profile_points(x, half_width * y_scale, top * z_scale, belly * z_scale)
 
 
+def _scale_z_signed_points(points: np.ndarray, positive_scale: float, negative_scale: float) -> np.ndarray:
+    scaled = points.copy()
+    positive = scaled[:, 2] >= 0.0
+    scaled[positive, 2] *= positive_scale
+    scaled[~positive, 2] *= negative_scale
+    return scaled
+
+
+def _conic_forebody_sections(
+    nose_points: list[list[float]],
+    mid_points: list[list[float]],
+    x_midbody: float,
+    fracs: tuple[float, ...],
+) -> list[dict[str, Any]]:
+    ref = np.asarray(nose_points, dtype=float)
+    mid = np.asarray(mid_points, dtype=float)
+    ref[:, 0] = 0.0
+    mid[:, 0] = 0.0
+
+    ref_y = max(float(np.max(np.abs(ref[:, 1]))), 1e-9)
+    ref_top = max(float(np.max(ref[:, 2])), 1e-9)
+    ref_belly = max(float(np.max(-ref[:, 2])), 1e-9)
+    mid_y = max(float(np.max(np.abs(mid[:, 1]))), 1e-9)
+    mid_top = max(float(np.max(mid[:, 2])), 1e-9)
+    mid_belly = max(float(np.max(-mid[:, 2])), 1e-9)
+
+    oval = ref.copy()
+    oval[:, 1] *= mid_y / ref_y
+    oval = _scale_z_signed_points(oval, mid_top / ref_top, mid_belly / ref_belly)
+
+    sections: list[dict[str, Any]] = []
+    for frac in fracs:
+        size = float(np.sin(0.5 * np.pi * frac) ** 0.82)
+        shape_blend = float(np.clip((frac - 0.18) / max(0.86 - 0.18, 1e-12), 0.0, 1.0))
+        shape_blend = shape_blend * shape_blend * (3.0 - 2.0 * shape_blend)
+        points = (1.0 - shape_blend) * oval + shape_blend * mid
+        points[:, 0] = x_midbody * frac
+        points[:, 1:] *= size
+        sections.append(
+            {
+                "name": f"conic_forebody_{frac:.2f}",
+                "x_m": float(points[0, 0]),
+                "points": points.tolist(),
+            }
+        )
+    return sections
+
+
 def _section_point_rows(sections: list[dict[str, Any]]) -> list[dict[str, float | int | str]]:
     rows: list[dict[str, float | int | str]] = []
     for section in sections:
@@ -172,11 +220,23 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
             "name": "nose_blunt_start",
             "x_m": 0.004 * length,
             "points": _scaled_body_profile(0.004 * length, half_width, top, belly, 0.06, 0.06),
-        },
-        nose_section,
+        }
     ]
-    if nose_profile_code in {1, 2}:
-        fracs = (0.16, 0.34, 0.54, 0.74, 0.90) if nose_profile_code == 1 else (0.24, 0.52, 0.78)
+
+    if nose_profile_code == 1:
+        sections.extend(
+            _conic_forebody_sections(
+                nose_points,
+                mid_body_section["points"],
+                float(x2),
+                (0.12, 0.24, 0.36, 0.48, 0.60, 0.72, 0.84, 0.94),
+            )
+        )
+    else:
+        sections.append(nose_section)
+
+    if nose_profile_code == 2:
+        fracs = (0.24, 0.52, 0.78)
         nose_arr = np.asarray(nose_section["points"], dtype=float)
         mid_arr = np.asarray(mid_body_section["points"], dtype=float)
         for frac in fracs:

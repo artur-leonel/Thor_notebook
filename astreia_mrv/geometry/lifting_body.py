@@ -135,6 +135,56 @@ def _smooth_transition_rings(
     return rings
 
 
+def _scale_z_signed(ring: np.ndarray, positive_scale: float, negative_scale: float) -> np.ndarray:
+    scaled = ring.copy()
+    positive = scaled[:, 2] >= 0.0
+    scaled[positive, 2] *= positive_scale
+    scaled[~positive, 2] *= negative_scale
+    return scaled
+
+
+def _conic_forebody_rings(
+    ring_reference: np.ndarray,
+    ring_midbody: np.ndarray,
+    x_midbody: float,
+    ring_count: int,
+) -> list[np.ndarray]:
+    """Generate a single smooth blunt-conic forebody up to the first body station.
+
+    Earlier versions ended the nose at an intermediate shoulder and then
+    restarted the body expansion, which made a visible kink. This treats the
+    shoulder as a shape reference only; station size evolves monotonically from
+    the tip to the mid-body maximum.
+    """
+    ref = ring_reference.copy()
+    mid = ring_midbody.copy()
+    ref[:, 0] = 0.0
+    mid[:, 0] = 0.0
+
+    ref_y = max(float(np.max(np.abs(ref[:, 1]))), 1e-9)
+    ref_top = max(float(np.max(ref[:, 2])), 1e-9)
+    ref_belly = max(float(np.max(-ref[:, 2])), 1e-9)
+    mid_y = max(float(np.max(np.abs(mid[:, 1]))), 1e-9)
+    mid_top = max(float(np.max(mid[:, 2])), 1e-9)
+    mid_belly = max(float(np.max(-mid[:, 2])), 1e-9)
+
+    oval = ref.copy()
+    oval[:, 1] *= mid_y / ref_y
+    oval = _scale_z_signed(oval, mid_top / ref_top, mid_belly / ref_belly)
+
+    rings: list[np.ndarray] = []
+    for k in range(1, ring_count + 1):
+        frac = k / ring_count
+        x = x_midbody * frac
+        size = math.sin(0.5 * math.pi * frac) ** 0.82
+        shape_blend = float(_smoothstep(0.18, 0.86, frac))
+        ring = (1.0 - shape_blend) * oval + shape_blend * mid
+        ring[:, 0] = x
+        ring[:, 1:] *= size
+        rings.append(ring)
+    return rings
+
+
 def _connect_rings(ring_count: int, ring_size: int, start_index: int = 0, zone: str = "fuselage") -> tuple[list[list[int]], list[str]]:
     faces: list[list[int]] = []
     zones: list[str] = []
@@ -478,26 +528,26 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
     ring3 = sample_closed_hermite(c3, contour_samples)
     ring_size = len(ring1)
 
-    nose_rings = []
-    for k in range(1, max(4, longitudinal_samples // 2) + 1):
-        frac = k / max(4, longitudinal_samples // 2)
-        if nose_profile_code == 0:
-            theta = frac * theta_n
-            x = rn * (1.0 - math.cos(theta))
-            scale = (rn * math.sin(theta)) / max(r1, 1e-9)
-            scale = scale ** float(p["nose_ogive_exponent"])
-        elif nose_profile_code == 1:
-            x = x1 * frac
-            scale = math.sin(0.5 * math.pi * frac) ** 0.74
-        else:
-            x = x1 * frac
-            scale = frac**1.18
-        ring = ring1.copy()
-        ring[:, 0] = x
-        ring[:, 1:] *= scale
-        nose_rings.append(ring)
-
-    path_rings = [ring1, *_smooth_transition_rings(ring1, ring2, x1, x2, nose_profile_code), ring2, ring3]
+    if nose_profile_code == 1:
+        nose_rings = _conic_forebody_rings(ring1, ring2, x2, max(16, longitudinal_samples + 4))
+        path_rings = [ring2, ring3]
+    else:
+        nose_rings = []
+        for k in range(1, max(4, longitudinal_samples // 2) + 1):
+            frac = k / max(4, longitudinal_samples // 2)
+            if nose_profile_code == 0:
+                theta = frac * theta_n
+                x = rn * (1.0 - math.cos(theta))
+                scale = (rn * math.sin(theta)) / max(r1, 1e-9)
+                scale = scale ** float(p["nose_ogive_exponent"])
+            else:
+                x = x1 * frac
+                scale = frac**1.18
+            ring = ring1.copy()
+            ring[:, 0] = x
+            ring[:, 1:] *= scale
+            nose_rings.append(ring)
+        path_rings = [ring1, *_smooth_transition_rings(ring1, ring2, x1, x2, nose_profile_code), ring2, ring3]
 
     paths = []
     for j in range(ring_size):
