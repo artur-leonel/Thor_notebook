@@ -19,5 +19,8 @@ def test_onshape_step_export_produces_valid_solid_manifest(tmp_path: Path) -> No
 
     assert manifest["valid_body"] is True
     assert manifest["valid_assembly"] is True
+    assert manifest["export_kind"] == "faceted_brep_solid_from_generated_mrv_mesh"
+    assert manifest["faces"] == len(geometry.mesh.faces)
+    assert manifest["vertices"] == len(geometry.mesh.vertices)
     assert Path(str(manifest["assembly_step"])).exists()
     assert Path(str(manifest["part_steps"]["body"])).exists()

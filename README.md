@@ -70,10 +70,11 @@ Upload this file to Onshape:
 outputs/mrv3_notebook/onshape_step/geometry_onshape.step
 ```
 
-The STEP handoff contains a lofted body plus separate solid parts for the left
-and right canted aft fins, dorsal/ventral tail fins, and center body flap. STEP
-does not preserve the Python/THOR feature history, so the export also includes
-editable reconstruction aids:
+The STEP handoff is a faceted BREP solid generated directly from the same
+watertight MRV OML used by the plots. It should match the current geometry in
+Onshape; it is not the older simplified analytic loft. STEP does not preserve
+the Python/THOR feature history, so the export also includes editable
+reconstruction aids:
 
 ```text
 outputs/mrv3_notebook/onshape_parameters.csv

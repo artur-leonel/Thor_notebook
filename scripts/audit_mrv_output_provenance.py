@@ -134,6 +134,10 @@ def audit(out_dir: Path) -> list[str]:
     step_manifest_path = out_dir / "onshape_step" / "onshape_step_manifest.json"
     if step_manifest_path.exists():
         step_manifest = _read_json(step_manifest_path)
+        if step_manifest.get("export_kind") != "faceted_brep_solid_from_generated_mrv_mesh":
+            errors.append(
+                "onshape_step_manifest.export_kind is not faceted_brep_solid_from_generated_mrv_mesh"
+            )
         if step_manifest.get("valid_body") is not True:
             errors.append("onshape_step_manifest.valid_body is not true")
         if step_manifest.get("valid_assembly") is not True:
