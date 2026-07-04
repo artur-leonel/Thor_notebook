@@ -8,6 +8,7 @@ import yaml
 
 
 GeometryFamily = Literal["capsule", "lifting_body"]
+NoseProfile = Literal["rounded", "conic", "triangular"]
 RecoveryMode = Literal[
     "parafoil",
     "parachute_airbag",
@@ -81,6 +82,7 @@ class VehicleDesign:
     rx: dict[str, float]
     geometry_family: GeometryFamily
     recovery_mode: RecoveryMode
+    nose_profile: NoseProfile = "rounded"
     mission: MissionSpec = field(default_factory=MissionSpec)
     recovery: RecoverySpec = field(default_factory=RecoverySpec)
     constraints: dict[str, float] = field(default_factory=dict)
@@ -142,6 +144,9 @@ def load_design(path: str | Path) -> VehicleDesign:
         recovery_zone_authorized=bool(mission.get("recovery_zone_authorized", True)),
     )
     recovery_mode = str(recovery.get("mode", data.get("recovery_mode", "parafoil")))
+    nose_profile = str(vehicle.get("nose_profile", "rounded"))
+    if nose_profile not in {"rounded", "conic", "triangular"}:
+        raise ValueError(f"Unsupported nose_profile {nose_profile!r}; expected rounded, conic, or triangular")
     recovery_spec = RecoverySpec(
         mode=recovery_mode,  # type: ignore[arg-type]
         deploy_mach_max=float(recovery.get("deploy_mach_max", 0.8)),
@@ -160,6 +165,7 @@ def load_design(path: str | Path) -> VehicleDesign:
         rx=rx,
         geometry_family=str(vehicle.get("geometry_family", "lifting_body")),  # type: ignore[arg-type]
         recovery_mode=recovery_mode,  # type: ignore[arg-type]
+        nose_profile=nose_profile,  # type: ignore[arg-type]
         mission=mission_spec,
         recovery=recovery_spec,
         constraints={str(k): float(v) for k, v in (data.get("constraints") or {}).items()},

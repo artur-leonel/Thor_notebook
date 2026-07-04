@@ -103,10 +103,48 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
     belly = float(p["body_belly_depth"])
     rn = float(p["R_N"])
     theta = np.deg2rad(float(p["theta_N_deg"]))
-    x1 = rn * (1.0 - np.cos(theta))
+    spherical_x1 = rn * (1.0 - np.cos(theta))
+    nose_profile_code = int(float(p.get("nose_profile_code", 0.0)))
+    x1 = max(spherical_x1, float(p.get("nose_station_frac", 0.0)) * length)
     r1 = rn * np.sin(theta)
-    x2 = min(0.70 * length, x1 + float(p["dx1"]))
+    x2 = min(0.70 * length, spherical_x1 + float(p["dx1"]))
     x3 = min(0.94 * length, x2 + float(p["dx2"]))
+    if nose_profile_code == 1:
+        nose_points = _body_profile_points(
+            float(x1),
+            min(0.86 * r1, half_width),
+            0.86 * r1,
+            0.82 * r1,
+            shoulder_y_scale=0.54,
+            shoulder_z_scale=0.50,
+            chine_y_scale=0.86,
+            chine_z_scale=-0.02,
+            belly_scale=1.0,
+        )
+    elif nose_profile_code == 2:
+        nose_points = _body_profile_points(
+            float(x1),
+            min(0.92 * r1, half_width),
+            0.92 * r1,
+            0.70 * r1,
+            shoulder_y_scale=0.92,
+            shoulder_z_scale=0.08,
+            chine_y_scale=0.62,
+            chine_z_scale=-0.42,
+            belly_scale=1.0,
+        )
+    else:
+        nose_points = _body_profile_points(
+            float(x1),
+            min(r1, half_width),
+            float(p["nose_top_scale"]) * r1,
+            float(p["nose_belly_scale"]) * r1,
+            shoulder_y_scale=float(p["nose_shoulder_scale"]),
+            shoulder_z_scale=0.46,
+            chine_y_scale=float(p["nose_chine_scale"]),
+            chine_z_scale=-0.05,
+            belly_scale=1.0,
+        )
 
     sections = [
         {
@@ -117,17 +155,7 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
         {
             "name": "nose_spherical_match",
             "x_m": float(x1),
-            "points": _body_profile_points(
-                float(x1),
-                min(r1, half_width),
-                float(p["nose_top_scale"]) * r1,
-                float(p["nose_belly_scale"]) * r1,
-                shoulder_y_scale=float(p["nose_shoulder_scale"]),
-                shoulder_z_scale=0.46,
-                chine_y_scale=float(p["nose_chine_scale"]),
-                chine_z_scale=-0.05,
-                belly_scale=1.0,
-            ),
+            "points": nose_points,
         },
         {
             "name": "mid_body",
@@ -258,9 +286,8 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
         "measurements": _cad_measurements(geometry),
         "source_parameters": dict(
             sorted(
-                (str(key), float(value))
+                (str(key), float(value) if isinstance(value, (int, float, np.integer, np.floating)) else str(value))
                 for key, value in p.items()
-                if isinstance(value, (int, float, np.integer, np.floating))
             )
         ),
         "normalized_rx": dict(sorted((str(key), float(value)) for key, value in geometry.metadata.get("normalized_rx", {}).items())),

@@ -101,3 +101,18 @@ def test_lifting_body_aft_taper_has_no_abrupt_body_step():
     span_drop_rate = np.maximum(0.0, y_span[:-1] - y_span[1:]) / np.maximum(np.diff(x), 1e-9)
 
     assert float(span_drop_rate.max()) < 1.20
+
+
+def test_mrv3_nose_profile_variants_are_distinct():
+    conic = generate_lifting_body(load_design("configs/mrv3.yaml"))
+    triangular = generate_lifting_body(load_design("configs/mrv3_triangular.yaml"))
+
+    assert conic.metadata["nose_profile"] == "conic"
+    assert triangular.metadata["nose_profile"] == "triangular"
+    assert conic.metadata["stations"]["x_nose_match_m"] > 0.10 * conic.reference_length_m
+    assert triangular.metadata["stations"]["x_nose_match_m"] > 0.10 * triangular.reference_length_m
+
+    sample_x = 0.12 * conic.reference_length_m
+    conic_forebody = conic.mesh.vertices[np.abs(conic.mesh.vertices[:, 0] - sample_x).argmin()]
+    triangular_forebody = triangular.mesh.vertices[np.abs(triangular.mesh.vertices[:, 0] - sample_x).argmin()]
+    assert not np.allclose(conic_forebody[1:], triangular_forebody[1:], atol=1e-4)

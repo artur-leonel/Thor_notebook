@@ -18,41 +18,74 @@ from astreia_mrv.math.hermite import sample_closed_hermite, sample_open_hermite
 from astreia_mrv.parameters import PhysicalParameters, map_lifting_body_parameters
 
 
-def _contour_points(params: dict[str, float], station: int, x: float, r1: float | None = None) -> np.ndarray:
+def _nose_station_x(params: dict[str, float | str]) -> float:
+    l = float(params["L_body"])
+    rn = float(params["R_N"])
+    theta_n = math.radians(float(params["theta_N_deg"]))
+    spherical_match = rn * (1.0 - math.cos(theta_n))
+    station_frac = float(params.get("nose_station_frac", 0.0))
+    return max(spherical_match, station_frac * l)
+
+
+def _contour_points(params: dict[str, float | str], station: int, x: float, r1: float | None = None) -> np.ndarray:
     if station == 1:
         r = float(r1)
-        # Blunt hypersonic nose section: rounded enough for heating, but with
-        # early shoulder/chine cues so it does not read as a plain tube.
-        yz = np.array(
-            [
-                [0.0, params["nose_top_scale"] * r],
-                [params["nose_shoulder_scale"] * r, 0.46 * r],
-                [params["nose_chine_scale"] * r, -0.05 * r],
-                [0.0, -params["nose_belly_scale"] * r],
-                [-params["nose_chine_scale"] * r, -0.05 * r],
-                [-params["nose_shoulder_scale"] * r, 0.46 * r],
-            ]
-        )
+        nose_profile_code = int(float(params.get("nose_profile_code", 0.0)))
+        if nose_profile_code == 1:
+            yz = np.array(
+                [
+                    [0.0, 0.86 * r],
+                    [0.54 * r, 0.50 * r],
+                    [0.86 * r, -0.02 * r],
+                    [0.0, -0.82 * r],
+                    [-0.86 * r, -0.02 * r],
+                    [-0.54 * r, 0.50 * r],
+                ]
+            )
+        elif nose_profile_code == 2:
+            yz = np.array(
+                [
+                    [0.0, 0.92 * r],
+                    [0.92 * r, 0.08 * r],
+                    [0.62 * r, -0.42 * r],
+                    [0.0, -0.70 * r],
+                    [-0.62 * r, -0.42 * r],
+                    [-0.92 * r, 0.08 * r],
+                ]
+            )
+        else:
+            # Blunt hypersonic nose section: rounded enough for heating, but
+            # with early shoulder/chine cues so it does not read as a plain tube.
+            yz = np.array(
+                [
+                    [0.0, float(params["nose_top_scale"]) * r],
+                    [float(params["nose_shoulder_scale"]) * r, 0.46 * r],
+                    [float(params["nose_chine_scale"]) * r, -0.05 * r],
+                    [0.0, -float(params["nose_belly_scale"]) * r],
+                    [-float(params["nose_chine_scale"]) * r, -0.05 * r],
+                    [-float(params["nose_shoulder_scale"]) * r, 0.46 * r],
+                ]
+            )
     else:
         if station == 2:
-            hw_scale = params["forebody_width_scale"]
+            hw_scale = float(params["forebody_width_scale"])
             top_scale = 0.96
-            belly_scale = params["station2_belly_scale"]
-            shoulder_y_scale = params["station2_shoulder_y_scale"]
-            shoulder_z_scale = params["station2_shoulder_z_scale"]
-            chine_y_scale = params["station2_chine_y_scale"]
-            chine_z_scale = params["station2_chine_z_scale"]
+            belly_scale = float(params["station2_belly_scale"])
+            shoulder_y_scale = float(params["station2_shoulder_y_scale"])
+            shoulder_z_scale = float(params["station2_shoulder_z_scale"])
+            chine_y_scale = float(params["station2_chine_y_scale"])
+            chine_z_scale = float(params["station2_chine_z_scale"])
         else:
-            hw_scale = params["station3_width_scale"]
+            hw_scale = float(params["station3_width_scale"])
             top_scale = 0.64
             belly_scale = 0.70
-            shoulder_y_scale = params["station3_shoulder_y_scale"]
-            shoulder_z_scale = params["station3_shoulder_z_scale"]
+            shoulder_y_scale = float(params["station3_shoulder_y_scale"])
+            shoulder_z_scale = float(params["station3_shoulder_z_scale"])
             chine_y_scale = 1.0
             chine_z_scale = -0.08
-        hw = params["body_half_width"] * hw_scale
-        top = params["body_top_height"] * top_scale
-        belly = params["body_belly_depth"] * belly_scale
+        hw = float(params["body_half_width"]) * hw_scale
+        top = float(params["body_top_height"]) * top_scale
+        belly = float(params["body_belly_depth"]) * belly_scale
         yz = np.array(
             [
                 [0.0, top],
@@ -390,13 +423,14 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
 
 def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longitudinal_samples: int = 14) -> SurfaceMesh:
     p = params.values
-    l = p["L_body"]
-    rn = p["R_N"]
-    theta_n = math.radians(p["theta_N_deg"])
+    l = float(p["L_body"])
+    rn = float(p["R_N"])
+    theta_n = math.radians(float(p["theta_N_deg"]))
     r1 = rn * math.sin(theta_n)
-    x1 = rn * (1.0 - math.cos(theta_n))
-    x2 = min(0.70 * l, x1 + p["dx1"])
-    x3 = min(0.94 * l, x2 + p["dx2"])
+    spherical_x1 = rn * (1.0 - math.cos(theta_n))
+    x1 = _nose_station_x(p)
+    x2 = min(0.70 * l, spherical_x1 + float(p["dx1"]))
+    x3 = min(0.94 * l, x2 + float(p["dx2"]))
 
     c1 = _contour_points(p, 1, x1, r1)
     c2 = _contour_points(p, 2, x2)
@@ -407,12 +441,17 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
     ring_size = len(ring1)
 
     nose_rings = []
+    nose_profile_code = int(float(p.get("nose_profile_code", 0.0)))
     for k in range(1, max(4, longitudinal_samples // 2) + 1):
         frac = k / max(4, longitudinal_samples // 2)
-        theta = frac * theta_n
-        x = rn * (1.0 - math.cos(theta))
-        scale = (rn * math.sin(theta)) / max(r1, 1e-9)
-        scale = scale ** p["nose_ogive_exponent"]
+        if nose_profile_code == 0:
+            theta = frac * theta_n
+            x = rn * (1.0 - math.cos(theta))
+            scale = (rn * math.sin(theta)) / max(r1, 1e-9)
+            scale = scale ** float(p["nose_ogive_exponent"])
+        else:
+            x = x1 * frac
+            scale = frac
         ring = ring1.copy()
         ring[:, 0] = x
         ring[:, 1:] *= scale
@@ -690,14 +729,20 @@ def generate_lifting_body(design: VehicleDesign) -> VehicleGeometry:
     payload_box = (design.payload.length_m, design.payload.width_m, design.payload.height_m)
     metadata = {
         "family": "lifting_body",
+        "nose_profile": design.nose_profile,
         "parameters": p,
         "normalized_rx": params.normalized,
         "stations": {
-            "x_nose_match_m": p["R_N"] * (1.0 - math.cos(math.radians(p["theta_N_deg"]))),
-            "x_middle_m": min(0.70 * p["L_body"], p["R_N"] * (1.0 - math.cos(math.radians(p["theta_N_deg"]))) + p["dx1"]),
+            "x_nose_match_m": _nose_station_x(p),
+            "x_middle_m": min(
+                0.70 * float(p["L_body"]),
+                float(p["R_N"]) * (1.0 - math.cos(math.radians(float(p["theta_N_deg"])))) + float(p["dx1"]),
+            ),
             "x_rear_m": min(
-                0.94 * p["L_body"],
-                p["R_N"] * (1.0 - math.cos(math.radians(p["theta_N_deg"]))) + p["dx1"] + p["dx2"],
+                0.94 * float(p["L_body"]),
+                float(p["R_N"]) * (1.0 - math.cos(math.radians(float(p["theta_N_deg"]))))
+                + float(p["dx1"])
+                + float(p["dx2"]),
             ),
         },
         "control_surfaces": {

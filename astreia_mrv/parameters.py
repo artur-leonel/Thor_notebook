@@ -97,7 +97,7 @@ CAPSULE_DEFAULT_RX = {
 @dataclass(frozen=True)
 class PhysicalParameters:
     family: str
-    values: dict[str, float]
+    values: dict[str, float | str]
     normalized: dict[str, float]
     bounds: dict[str, tuple[float, float]]
 
@@ -117,7 +117,7 @@ def map_lifting_body_parameters(design: VehicleDesign) -> PhysicalParameters:
     raw_body_half_width = interp_from_rx(rx["y_3_2"], *bounds["body_half_width"])
     min_payload_half_width = (design.payload.width_m + 2.0 * payload_clearance) / 1.35
     target_cylindrical_half_width = 1.05 * (body_top_height + body_belly_depth)
-    values: dict[str, float] = {
+    values: dict[str, float | str] = {
         "L_body": design.scale.body_length_m,
         "R_N": interp_from_rx(_rx(design, "R_N", LIFTING_DEFAULT_RX), *bounds["R_N"]),
         "theta_N_deg": interp_from_rx(_rx(design, "theta_N", LIFTING_DEFAULT_RX), *bounds["theta_N_deg"]),
@@ -140,6 +140,14 @@ def map_lifting_body_parameters(design: VehicleDesign) -> PhysicalParameters:
         "x_cg_frac": interp_from_rx(rx["x_cg"], *bounds["x_cg_frac"]),
     }
     nose_bluntness = 0.5 * (rx["R_N"] + rx["theta_N"])
+    nose_profile_codes = {"rounded": 0.0, "conic": 1.0, "triangular": 2.0}
+    values["nose_profile"] = design.nose_profile
+    values["nose_profile_code"] = nose_profile_codes[design.nose_profile]
+    values["nose_station_frac"] = {
+        "rounded": 0.0,
+        "conic": 0.135,
+        "triangular": 0.120,
+    }[design.nose_profile]
     values["nose_ogive_exponent"] = interp_from_rx(1.0 - nose_bluntness, 1.0, 1.55)
     values["nose_top_scale"] = interp_from_rx(nose_bluntness, 0.62, 0.78)
     values["nose_shoulder_scale"] = interp_from_rx(nose_bluntness, 0.36, 0.52)
@@ -166,7 +174,7 @@ def map_lifting_body_parameters(design: VehicleDesign) -> PhysicalParameters:
 def map_capsule_parameters(design: VehicleDesign) -> PhysicalParameters:
     bounds = capsule_bounds(design.scale.body_length_m)
     rx = {**CAPSULE_DEFAULT_RX, **design.rx}
-    values: dict[str, float] = {
+    values: dict[str, float | str] = {
         "L_body": design.scale.body_length_m,
         "R_N": interp_from_rx(rx["R_N"], *bounds["R_N"]),
         "R_S": interp_from_rx(rx["R_S"], *bounds["R_S"]),

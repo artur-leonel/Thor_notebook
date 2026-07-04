@@ -9,7 +9,7 @@ def test_interp_from_rx():
 
 
 def test_mrv_configs_load_and_map():
-    for name in ["mrv1", "mrv2", "mrv3"]:
+    for name in ["mrv1", "mrv2", "mrv3", "mrv3_triangular"]:
         design = load_design(f"configs/{name}.yaml")
         params = map_design_parameters(design)
         assert params.values["L_body"] > 0.0

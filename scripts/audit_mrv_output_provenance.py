@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import math
+import numbers
 import sys
 from pathlib import Path
 from typing import Any
@@ -47,7 +48,7 @@ def _close(name: str, actual: float, expected: float, errors: list[str], rel_tol
         errors.append(f"{name}: artifact={actual!r} expected={expected!r}")
 
 
-def _compare_numeric_mapping(name: str, actual: dict[str, Any], expected: dict[str, Any], errors: list[str]) -> None:
+def _compare_scalar_mapping(name: str, actual: dict[str, Any], expected: dict[str, Any], errors: list[str]) -> None:
     missing = sorted(set(expected) - set(actual))
     extra = sorted(set(actual) - set(expected))
     if missing:
@@ -55,7 +56,10 @@ def _compare_numeric_mapping(name: str, actual: dict[str, Any], expected: dict[s
     if extra:
         errors.append(f"{name}: unexpected keys {extra}")
     for key in sorted(set(expected) & set(actual)):
-        _close(f"{name}.{key}", float(actual[key]), float(expected[key]), errors)
+        if isinstance(expected[key], numbers.Real) and isinstance(actual[key], numbers.Real):
+            _close(f"{name}.{key}", float(actual[key]), float(expected[key]), errors)
+        elif actual[key] != expected[key]:
+            errors.append(f"{name}.{key}: artifact={actual[key]!r} expected={expected[key]!r}")
 
 
 def audit(out_dir: Path) -> list[str]:
@@ -103,22 +107,22 @@ def audit(out_dir: Path) -> list[str]:
         if payload_spec.get("name") != design.payload.name:
             errors.append(f"{label}: provenance.payload.name does not match YAML")
         _close(f"{label}.provenance.payload.mass_kg", payload_spec.get("mass_kg", -1), design.payload.mass_kg, errors)
-        _compare_numeric_mapping(f"{label}.provenance.rx", provenance.get("rx", {}), dict(sorted(design.rx.items())), errors)
+        _compare_scalar_mapping(f"{label}.provenance.rx", provenance.get("rx", {}), dict(sorted(design.rx.items())), errors)
 
-    _compare_numeric_mapping("geometry.json.normalized_rx", geometry_json.get("normalized_rx", {}), design.rx, errors)
-    _compare_numeric_mapping(
+    _compare_scalar_mapping("geometry.json.normalized_rx", geometry_json.get("normalized_rx", {}), design.rx, errors)
+    _compare_scalar_mapping(
         "geometry.json.parameters",
         geometry_json.get("parameters", {}),
         geometry.metadata.get("parameters", {}),
         errors,
     )
-    _compare_numeric_mapping(
+    _compare_scalar_mapping(
         "onshape_brep_spec.source_parameters",
         brep_spec.get("source_parameters", {}),
         geometry.metadata.get("parameters", {}),
         errors,
     )
-    _compare_numeric_mapping(
+    _compare_scalar_mapping(
         "onshape_brep_spec.normalized_rx",
         brep_spec.get("normalized_rx", {}),
         design.rx,

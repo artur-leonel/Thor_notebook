@@ -1,7 +1,7 @@
 vehicle:
-  name: MRV-3
+  name: MRV-3-TRIANGULAR
   geometry_family: lifting_body
-  nose_profile: conic
+  nose_profile: triangular
   body_length_m: 2.0
   payload_target_kg: 300.0
   reuse_target: 3
@@ -71,6 +71,7 @@ rx:
   f_el: 0.75
   L_bf: 0.35
   x_cg: 0.50
+
 mass_sanity:
   enabled: true
   warn_bulk_density_kg_m3: 1200
