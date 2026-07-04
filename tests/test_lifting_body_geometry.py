@@ -1,5 +1,6 @@
 from astreia_mrv.config import load_design
-from astreia_mrv.geometry.lifting_body import generate_lifting_body
+from astreia_mrv.geometry.lifting_body import _build_fuselage, _ring_vertex_groups, generate_lifting_body
+from astreia_mrv.parameters import map_lifting_body_parameters
 import numpy as np
 import pytest
 import trimesh
@@ -82,3 +83,21 @@ def test_lifting_body_aft_closeout_has_finite_truncated_section():
     assert len(near_tail) >= 12
     assert float(np.ptp(near_tail[:, 1])) > 0.050
     assert float(np.ptp(near_tail[:, 2])) > 0.030
+
+
+def test_lifting_body_aft_taper_has_no_abrupt_body_step():
+    design = load_design("configs/mrv3.yaml")
+    params = map_lifting_body_parameters(design)
+    fuselage = _build_fuselage(params)
+    rings = [
+        fuselage.vertices[group]
+        for group in _ring_vertex_groups(fuselage)
+        if len(group) >= 40 and float(fuselage.vertices[group[0], 0]) >= 0.60 * params.values["L_body"]
+    ]
+    assert len(rings) >= 4
+
+    x = np.array([float(ring[:, 0].mean()) for ring in rings])
+    y_span = np.array([float(np.ptp(ring[:, 1])) for ring in rings])
+    span_drop_rate = np.maximum(0.0, y_span[:-1] - y_span[1:]) / np.maximum(np.diff(x), 1e-9)
+
+    assert float(span_drop_rate.max()) < 1.20

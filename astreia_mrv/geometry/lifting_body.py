@@ -279,10 +279,10 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
     """
     l = params["L_body"]
     half_width = params["body_half_width"]
-    x0 = 0.74 * l
+    x0 = 0.70 * l
     x1 = 0.992 * l
     elevon_break = 0.865 * l
-    span_max = min(0.085 * l, 1.40 * half_width) * params["fin_span_scale"]
+    span_max = min(0.073 * l, 1.25 * half_width) * params["fin_span_scale"]
     thickness = max(0.032, 0.30 * span_max)
     span_fracs = (0.45, 0.78, 1.0)
 
@@ -327,16 +327,16 @@ def _add_integrated_fin_panels(fuselage: SurfaceMesh, params: dict[str, float]) 
             lower = original_vertices[lower_idx]
             root = 0.5 * (upper + lower)
             t = np.clip((root[0] - x0) / max(x1 - x0, 1e-9), 0.0, 1.0)
-            leading = float(_smoothstep(0.0, 0.24, t))
+            leading = float(_smoothstep(0.0, 0.34, t))
             trailing = 1.0 - 0.38 * float(_smoothstep(0.74, 1.0, t))
-            profile = max(0.025, leading * trailing)
+            profile = leading * trailing
             span = span_max * profile
             root_side = max(abs(upper[1]), abs(lower[1]))
             for row_index, span_frac in enumerate(span_fracs, start=1):
                 x_panel = root[0] + span_frac * span_max * 0.26 * (1.0 - t)
                 y_panel = sign * (root_side + span * span_frac)
                 z_center = root[2] + span * (0.18 + 0.92 * span_frac)
-                local_thickness = thickness * (0.30 + 0.70 * profile) * (1.0 - 0.22 * span_frac)
+                local_thickness = thickness * (0.10 + 0.90 * profile) * (1.0 - 0.22 * span_frac)
                 upper_rows[row_index].append(len(vertices))
                 vertices.append([float(x_panel), float(y_panel), float(z_center + 0.5 * local_thickness)])
                 lower_rows[row_index].append(len(vertices))
@@ -425,15 +425,14 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
     fuselage_rings = [np.asarray([paths[j][i] for j in range(ring_size)]) for i in range(1, len(paths[0]))]
 
     taper_rings = []
-    for x_frac, y_scale, z_scale in (
-        (0.70, 0.82, 0.86),
-        (0.76, 0.76, 0.80),
-        (0.84, 0.64, 0.68),
-        (0.91, 0.52, 0.56),
-        (0.965, 0.42, 0.46),
-        (0.99, 0.40, 0.43),
-        (1.000, 0.40, 0.42),
-    ):
+    tail_start_frac = x3 / l
+    tail_ring_fracs = (0.70, 0.76, 0.84, 0.91, 0.965, 0.99, 1.000)
+    for x_frac in tail_ring_fracs:
+        if x_frac <= tail_start_frac + 1e-6:
+            continue
+        taper = float(_smoothstep(tail_start_frac, 1.0, x_frac))
+        y_scale = 1.0 - 0.60 * taper
+        z_scale = 1.0 - 0.58 * taper
         ring = ring3.copy()
         ring[:, 0] = l * x_frac
         ring[:, 1] *= y_scale
