@@ -145,8 +145,15 @@ def map_lifting_body_parameters(design: VehicleDesign) -> PhysicalParameters:
     values["nose_profile_code"] = nose_profile_codes[design.nose_profile]
     values["nose_station_frac"] = {
         "rounded": 0.0,
-        "conic": 0.135,
-        "triangular": 0.120,
+        "conic": 0.200,
+        "triangular": 0.110,
+    }[design.nose_profile]
+    spherical_match_radius = values["R_N"] * np.sin(np.deg2rad(values["theta_N_deg"]))
+    nose_station_radius_floor = min(body_top_height, body_belly_depth, values["body_half_width"])
+    values["nose_station_radius"] = {
+        "rounded": spherical_match_radius,
+        "conic": max(spherical_match_radius, 0.72 * nose_station_radius_floor),
+        "triangular": max(spherical_match_radius, 0.50 * nose_station_radius_floor),
     }[design.nose_profile]
     values["nose_ogive_exponent"] = interp_from_rx(1.0 - nose_bluntness, 1.0, 1.55)
     values["nose_top_scale"] = interp_from_rx(nose_bluntness, 0.62, 0.78)

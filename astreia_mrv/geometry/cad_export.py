@@ -106,31 +106,32 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
     spherical_x1 = rn * (1.0 - np.cos(theta))
     nose_profile_code = int(float(p.get("nose_profile_code", 0.0)))
     x1 = max(spherical_x1, float(p.get("nose_station_frac", 0.0)) * length)
-    r1 = rn * np.sin(theta)
+    spherical_r1 = rn * np.sin(theta)
+    r1 = float(p.get("nose_station_radius", spherical_r1))
     x2 = min(0.70 * length, spherical_x1 + float(p["dx1"]))
     x3 = min(0.94 * length, x2 + float(p["dx2"]))
     if nose_profile_code == 1:
         nose_points = _body_profile_points(
             float(x1),
-            min(0.82 * r1, half_width),
-            0.94 * r1,
-            0.94 * r1,
-            shoulder_y_scale=0.82,
-            shoulder_z_scale=0.47,
-            chine_y_scale=0.82,
-            chine_z_scale=-0.47,
+            min(0.90 * r1, half_width),
+            0.98 * r1,
+            0.92 * r1,
+            shoulder_y_scale=1.00,
+            shoulder_z_scale=0.52,
+            chine_y_scale=0.96,
+            chine_z_scale=-0.37,
             belly_scale=1.0,
         )
     elif nose_profile_code == 2:
         nose_points = _body_profile_points(
             float(x1),
-            min(0.92 * r1, half_width),
-            0.92 * r1,
-            0.70 * r1,
-            shoulder_y_scale=0.92,
-            shoulder_z_scale=0.08,
-            chine_y_scale=0.62,
-            chine_z_scale=-0.42,
+            min(1.04 * r1, half_width),
+            1.02 * r1,
+            0.74 * r1,
+            shoulder_y_scale=1.00,
+            shoulder_z_scale=0.02,
+            chine_y_scale=0.54,
+            chine_z_scale=-0.73,
             belly_scale=1.0,
         )
     else:
@@ -146,31 +147,52 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
             belly_scale=1.0,
         )
 
+    nose_section = {
+        "name": "nose_spherical_match",
+        "x_m": float(x1),
+        "points": nose_points,
+    }
+    mid_body_section = {
+        "name": "mid_body",
+        "x_m": float(x2),
+        "points": _body_profile_points(
+            float(x2),
+            half_width * float(p["forebody_width_scale"]),
+            top * 0.96,
+            belly * float(p["station2_belly_scale"]),
+            shoulder_y_scale=float(p["station2_shoulder_y_scale"]),
+            shoulder_z_scale=float(p["station2_shoulder_z_scale"]),
+            chine_y_scale=float(p["station2_chine_y_scale"]),
+            chine_z_scale=float(p["station2_chine_z_scale"]),
+        ),
+    }
+
     sections = [
         {
             "name": "nose_blunt_start",
             "x_m": 0.004 * length,
             "points": _scaled_body_profile(0.004 * length, half_width, top, belly, 0.06, 0.06),
         },
-        {
-            "name": "nose_spherical_match",
-            "x_m": float(x1),
-            "points": nose_points,
-        },
-        {
-            "name": "mid_body",
-            "x_m": float(x2),
-            "points": _body_profile_points(
-                float(x2),
-                half_width * float(p["forebody_width_scale"]),
-                top * 0.96,
-                belly * float(p["station2_belly_scale"]),
-                shoulder_y_scale=float(p["station2_shoulder_y_scale"]),
-                shoulder_z_scale=float(p["station2_shoulder_z_scale"]),
-                chine_y_scale=float(p["station2_chine_y_scale"]),
-                chine_z_scale=float(p["station2_chine_z_scale"]),
-            ),
-        },
+        nose_section,
+    ]
+    if nose_profile_code in {1, 2}:
+        fracs = (0.16, 0.34, 0.54, 0.74, 0.90) if nose_profile_code == 1 else (0.24, 0.52, 0.78)
+        nose_arr = np.asarray(nose_section["points"], dtype=float)
+        mid_arr = np.asarray(mid_body_section["points"], dtype=float)
+        for frac in fracs:
+            shape_blend = float(frac * frac * (3.0 - 2.0 * frac))
+            points = (1.0 - shape_blend) * nose_arr + shape_blend * mid_arr
+            points[:, 0] = x1 + frac * (x2 - x1)
+            sections.append(
+                {
+                    "name": f"forebody_blend_{frac:.2f}",
+                    "x_m": float(points[0, 0]),
+                    "points": points.tolist(),
+                }
+            )
+    sections.extend(
+        [
+            mid_body_section,
         {
             "name": "aft_body",
             "x_m": float(x3),
@@ -185,7 +207,8 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
                 chine_z_scale=-0.08,
             ),
         },
-    ]
+        ]
+    )
     for x_frac, y_scale, z_scale in (
         (0.74, 0.88, 0.90),
         (0.82, 0.80, 0.82),

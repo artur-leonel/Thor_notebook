@@ -34,23 +34,23 @@ def _contour_points(params: dict[str, float | str], station: int, x: float, r1: 
         if nose_profile_code == 1:
             yz = np.array(
                 [
-                    [0.0, 0.94 * r],
-                    [0.82 * r, 0.47 * r],
-                    [0.82 * r, -0.47 * r],
-                    [0.0, -0.94 * r],
-                    [-0.82 * r, -0.47 * r],
-                    [-0.82 * r, 0.47 * r],
+                    [0.0, 0.98 * r],
+                    [0.90 * r, 0.52 * r],
+                    [0.86 * r, -0.34 * r],
+                    [0.0, -0.92 * r],
+                    [-0.86 * r, -0.34 * r],
+                    [-0.90 * r, 0.52 * r],
                 ]
             )
         elif nose_profile_code == 2:
             yz = np.array(
                 [
-                    [0.0, 0.92 * r],
-                    [0.92 * r, 0.08 * r],
-                    [0.62 * r, -0.42 * r],
-                    [0.0, -0.70 * r],
-                    [-0.62 * r, -0.42 * r],
-                    [-0.92 * r, 0.08 * r],
+                    [0.0, 1.02 * r],
+                    [1.04 * r, 0.02 * r],
+                    [0.56 * r, -0.54 * r],
+                    [0.0, -0.74 * r],
+                    [-0.56 * r, -0.54 * r],
+                    [-1.04 * r, 0.02 * r],
                 ]
             )
         else:
@@ -97,6 +97,42 @@ def _contour_points(params: dict[str, float | str], station: int, x: float, r1: 
             ]
         )
     return np.column_stack([np.full(6, x), yz[:, 0], yz[:, 1]])
+
+
+def _sample_closed_polyline(points: np.ndarray, samples_per_segment: int = 8) -> np.ndarray:
+    """Sample a closed polygon without Hermite rounding for the faceted variant."""
+    points = np.asarray(points, dtype=float)
+    samples = []
+    for i, p0 in enumerate(points):
+        p1 = points[(i + 1) % len(points)]
+        for k in range(samples_per_segment):
+            u = k / samples_per_segment
+            samples.append((1.0 - u) * p0 + u * p1)
+    return np.asarray(samples, dtype=float)
+
+
+def _smooth_transition_rings(
+    ring1: np.ndarray,
+    ring2: np.ndarray,
+    x1: float,
+    x2: float,
+    nose_profile_code: int,
+) -> list[np.ndarray]:
+    """Add derived forebody shoulder stations so the nose-to-body slope is gradual."""
+    if nose_profile_code == 1:
+        fracs = (0.16, 0.34, 0.54, 0.74, 0.90)
+    elif nose_profile_code == 2:
+        fracs = (0.24, 0.52, 0.78)
+    else:
+        return []
+
+    rings: list[np.ndarray] = []
+    for frac in fracs:
+        shape_blend = float(_smoothstep(0.0, 1.0, frac))
+        ring = (1.0 - shape_blend) * ring1 + shape_blend * ring2
+        ring[:, 0] = x1 + frac * (x2 - x1)
+        rings.append(ring)
+    return rings
 
 
 def _connect_rings(ring_count: int, ring_size: int, start_index: int = 0, zone: str = "fuselage") -> tuple[list[list[int]], list[str]]:
@@ -426,7 +462,8 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
     l = float(p["L_body"])
     rn = float(p["R_N"])
     theta_n = math.radians(float(p["theta_N_deg"]))
-    r1 = rn * math.sin(theta_n)
+    spherical_r1 = rn * math.sin(theta_n)
+    r1 = float(p.get("nose_station_radius", spherical_r1))
     spherical_x1 = rn * (1.0 - math.cos(theta_n))
     x1 = _nose_station_x(p)
     x2 = min(0.70 * l, spherical_x1 + float(p["dx1"]))
@@ -435,13 +472,13 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
     c1 = _contour_points(p, 1, x1, r1)
     c2 = _contour_points(p, 2, x2)
     c3 = _contour_points(p, 3, x3)
-    ring1 = sample_closed_hermite(c1, contour_samples)
+    nose_profile_code = int(float(p.get("nose_profile_code", 0.0)))
+    ring1 = _sample_closed_polyline(c1, contour_samples) if nose_profile_code == 2 else sample_closed_hermite(c1, contour_samples)
     ring2 = sample_closed_hermite(c2, contour_samples)
     ring3 = sample_closed_hermite(c3, contour_samples)
     ring_size = len(ring1)
 
     nose_rings = []
-    nose_profile_code = int(float(p.get("nose_profile_code", 0.0)))
     for k in range(1, max(4, longitudinal_samples // 2) + 1):
         frac = k / max(4, longitudinal_samples // 2)
         if nose_profile_code == 0:
@@ -451,22 +488,16 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
             scale = scale ** float(p["nose_ogive_exponent"])
         elif nose_profile_code == 1:
             x = x1 * frac
-            scale = 0.42 * math.sqrt(frac) + 0.58 * frac
+            scale = math.sin(0.5 * math.pi * frac) ** 0.74
         else:
             x = x1 * frac
-            scale = frac
+            scale = frac**1.18
         ring = ring1.copy()
         ring[:, 0] = x
         ring[:, 1:] *= scale
         nose_rings.append(ring)
 
-    path_rings = [ring1, ring2, ring3]
-    if nose_profile_code in {1, 2}:
-        blend = 0.40 if nose_profile_code == 1 else 0.34
-        x_blend = x1 + blend * (x2 - x1)
-        ring_blend = (1.0 - blend) * ring1 + blend * ring2
-        ring_blend[:, 0] = x_blend
-        path_rings = [ring1, ring_blend, ring2, ring3]
+    path_rings = [ring1, *_smooth_transition_rings(ring1, ring2, x1, x2, nose_profile_code), ring2, ring3]
 
     paths = []
     for j in range(ring_size):
