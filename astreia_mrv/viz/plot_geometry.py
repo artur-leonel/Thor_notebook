@@ -372,9 +372,9 @@ def _style_render_axis(ax, verts: np.ndarray, title: str, elev: float, azim: flo
     ax.set_xticklabels([])
     ax.set_yticklabels([])
     ax.set_zticklabels([])
-    ax.xaxis.pane.set_facecolor((0.94, 0.96, 0.98, 1.0))
-    ax.yaxis.pane.set_facecolor((0.94, 0.96, 0.98, 1.0))
-    ax.zaxis.pane.set_facecolor((0.94, 0.96, 0.98, 1.0))
+    for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+        axis.pane.set_facecolor((1.0, 1.0, 1.0, 0.0))
+        axis.pane.set_edgecolor((1.0, 1.0, 1.0, 0.0))
     ax.grid(visible=False)
 
 
@@ -382,14 +382,16 @@ def save_three_view(geometry: VehicleGeometry, path: str | Path) -> None:
     """Save clean orthographic projections with hidden faces culled."""
     verts = geometry.mesh.vertices
     tri, colors, zones = _mesh_tris_and_colors(geometry)
-    fig = plt.figure(figsize=(14, 5.0))
+    fig = plt.figure(figsize=(14, 8.0))
     axes = [
-        fig.add_axes((0.06, 0.62, 0.58, 0.20)),
-        fig.add_axes((0.06, 0.21, 0.58, 0.20)),
-        fig.add_axes((0.70, 0.14, 0.25, 0.72)),
+        fig.add_axes((0.06, 0.62, 0.40, 0.26)),
+        fig.add_axes((0.54, 0.62, 0.40, 0.26)),
+        fig.add_axes((0.06, 0.16, 0.54, 0.26)),
+        fig.add_axes((0.68, 0.10, 0.25, 0.40)),
     ]
     views = [
-        ((0, 1), 2, 1.0, "Top x-y", ("x", "y")),
+        ((0, 1), 2, 1.0, "Top x-y (+z skin)", ("x", "y")),
+        ((0, 1), 2, -1.0, "Bottom x-y (-z skin)", ("x", "y")),
         ((0, 2), 1, 1.0, "Side x-z", ("x", "z")),
         ((1, 2), 0, 1.0, "Aft y-z", ("y", "z")),
     ]
@@ -416,10 +418,10 @@ def save_engineering_sheet(geometry: VehicleGeometry, path: str | Path) -> None:
     b = y1 - y0
     h = z1 - z0
 
-    fig = plt.figure(figsize=(14.0, 9.4))
+    fig = plt.figure(figsize=(14.0, 10.4))
 
-    ax_top = fig.add_axes((0.08, 0.74, 0.84, 0.15))
-    _draw_projection_mesh(ax_top, tri, zones, (0, 1), 2, 1.0, "Top planform")
+    ax_top = fig.add_axes((0.07, 0.75, 0.40, 0.16))
+    _draw_projection_mesh(ax_top, tri, zones, (0, 1), 2, 1.0, "Top planform (+z)")
     _set_projected_limits(ax_top, verts, (0, 1), equal_scale=True, pad_frac=0.24)
     ax_top.set_xlabel("x [m]")
     ax_top.set_ylabel("y [m]")
@@ -433,7 +435,13 @@ def save_engineering_sheet(geometry: VehicleGeometry, path: str | Path) -> None:
         rotation=90,
     )
 
-    ax_side = fig.add_axes((0.08, 0.49, 0.84, 0.15))
+    ax_bottom = fig.add_axes((0.53, 0.75, 0.40, 0.16))
+    _draw_projection_mesh(ax_bottom, tri, zones, (0, 1), 2, -1.0, "Bottom planform (-z fins/flap)")
+    _set_projected_limits(ax_bottom, verts, (0, 1), equal_scale=True, pad_frac=0.24)
+    ax_bottom.set_xlabel("x [m]")
+    ax_bottom.set_ylabel("y [m]")
+
+    ax_side = fig.add_axes((0.08, 0.50, 0.84, 0.15))
     _draw_projection_mesh(ax_side, tri, zones, (0, 2), 1, 1.0, "Side profile")
     _set_projected_limits(ax_side, verts, (0, 2), equal_scale=True, pad_frac=0.24)
     ax_side.set_xlabel("x [m]")
@@ -448,7 +456,7 @@ def save_engineering_sheet(geometry: VehicleGeometry, path: str | Path) -> None:
         rotation=90,
     )
 
-    ax_aft = fig.add_axes((0.08, 0.08, 0.38, 0.30))
+    ax_aft = fig.add_axes((0.08, 0.09, 0.38, 0.30))
     _draw_projection_mesh(ax_aft, tri, zones, (1, 2), 0, 1.0, "Aft view")
     _set_projected_limits(ax_aft, verts, (1, 2), equal_scale=True, pad_frac=0.24)
     ax_aft.set_xlabel("y [m]")
@@ -463,9 +471,9 @@ def save_engineering_sheet(geometry: VehicleGeometry, path: str | Path) -> None:
         rotation=90,
     )
 
-    ax_iso = fig.add_axes((0.54, 0.07, 0.38, 0.33), projection="3d")
+    ax_iso = fig.add_axes((0.54, 0.08, 0.38, 0.33), projection="3d")
     _add_lit_surface(ax_iso, tri, colors, zones, verts)
-    _style_render_axis(ax_iso, verts, "True-scale isometric", elev=24, azim=-48)
+    _style_render_axis(ax_iso, verts, "Oblique lower-aft solid view", elev=-14, azim=-52)
 
     fig.suptitle("Astreia-MRV Conceptual Engineering Sheet", fontsize=14, y=0.96)
     fig.text(
@@ -513,23 +521,29 @@ def save_control_surface_inspection(geometry: VehicleGeometry, path: str | Path)
     tri_aft, colors_aft, zones_aft = _filter_triangles_by_x(tri, colors, zones, x_cut)
     verts_aft = tri_aft.reshape(-1, 3)
 
-    fig = plt.figure(figsize=(13.5, 8.0))
+    fig = plt.figure(figsize=(13.5, 8.8))
 
-    ax_plan = fig.add_axes((0.07, 0.62, 0.86, 0.26))
-    _draw_projection_mesh(ax_plan, tri_aft, zones_aft, (0, 1), 2, 1.0, "Aft control planform")
+    ax_plan = fig.add_axes((0.07, 0.66, 0.40, 0.23))
+    _draw_projection_mesh(ax_plan, tri_aft, zones_aft, (0, 1), 2, 1.0, "Aft upper planform")
     _set_projected_limits(ax_plan, verts_aft, (0, 1), equal_scale=True, pad_frac=0.26)
     ax_plan.set_xlabel("x [m]")
     ax_plan.set_ylabel("y [m]")
 
-    ax_aft = fig.add_axes((0.07, 0.13, 0.36, 0.35))
+    ax_bottom = fig.add_axes((0.53, 0.66, 0.40, 0.23))
+    _draw_projection_mesh(ax_bottom, tri_aft, zones_aft, (0, 1), 2, -1.0, "Aft underside planform")
+    _set_projected_limits(ax_bottom, verts_aft, (0, 1), equal_scale=True, pad_frac=0.26)
+    ax_bottom.set_xlabel("x [m]")
+    ax_bottom.set_ylabel("y [m]")
+
+    ax_aft = fig.add_axes((0.07, 0.14, 0.36, 0.35))
     _draw_projection_mesh(ax_aft, tri_aft, zones_aft, (1, 2), 0, 1.0, "Aft fin/control section")
     _set_projected_limits(ax_aft, verts_aft, (1, 2), equal_scale=True, pad_frac=0.26)
     ax_aft.set_xlabel("y [m]")
     ax_aft.set_ylabel("z [m]")
 
-    ax_iso = fig.add_axes((0.52, 0.10, 0.40, 0.40), projection="3d")
+    ax_iso = fig.add_axes((0.52, 0.12, 0.40, 0.40), projection="3d")
     _add_lit_surface(ax_iso, tri_aft, colors_aft, zones_aft, verts_aft)
-    _style_render_axis(ax_iso, verts_aft, "Aft oblique close-up", elev=28, azim=-55)
+    _style_render_axis(ax_iso, verts_aft, "Lower-aft oblique close-up", elev=-20, azim=-55)
 
     fin_meta = geometry.metadata.get("control_surfaces", {}).get("geometry", {})
     summary = (
