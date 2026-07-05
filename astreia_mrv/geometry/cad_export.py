@@ -61,6 +61,10 @@ def _conic_forebody_sections(
     mid_points: list[list[float]],
     x_midbody: float,
     fracs: tuple[float, ...],
+    size_exponent: float = 0.82,
+    blend_start: float = 0.18,
+    blend_end: float = 0.86,
+    prefix: str = "conic_forebody",
 ) -> list[dict[str, Any]]:
     ref = np.asarray(nose_points, dtype=float)
     mid = np.asarray(mid_points, dtype=float)
@@ -80,15 +84,15 @@ def _conic_forebody_sections(
 
     sections: list[dict[str, Any]] = []
     for frac in fracs:
-        size = float(np.sin(0.5 * np.pi * frac) ** 0.82)
-        shape_blend = float(np.clip((frac - 0.18) / max(0.86 - 0.18, 1e-12), 0.0, 1.0))
+        size = float(np.sin(0.5 * np.pi * frac) ** size_exponent)
+        shape_blend = float(np.clip((frac - blend_start) / max(blend_end - blend_start, 1e-12), 0.0, 1.0))
         shape_blend = shape_blend * shape_blend * (3.0 - 2.0 * shape_blend)
         points = (1.0 - shape_blend) * oval + shape_blend * mid
         points[:, 0] = x_midbody * frac
         points[:, 1:] *= size
         sections.append(
             {
-                "name": f"conic_forebody_{frac:.2f}",
+                "name": f"{prefix}_{frac:.2f}",
                 "x_m": float(points[0, 0]),
                 "points": points.tolist(),
             }
@@ -232,24 +236,21 @@ def _onshape_brep_spec(geometry: VehicleGeometry) -> dict[str, Any]:
                 (0.12, 0.24, 0.36, 0.48, 0.60, 0.72, 0.84, 0.94),
             )
         )
+    elif nose_profile_code == 2:
+        sections.extend(
+            _conic_forebody_sections(
+                nose_points,
+                mid_body_section["points"],
+                float(x2),
+                (0.14, 0.27, 0.40, 0.54, 0.68, 0.82, 0.94),
+                size_exponent=1.02,
+                blend_start=0.30,
+                blend_end=0.96,
+                prefix="soft_faceted_forebody",
+            )
+        )
     else:
         sections.append(nose_section)
-
-    if nose_profile_code == 2:
-        fracs = (0.24, 0.52, 0.78)
-        nose_arr = np.asarray(nose_section["points"], dtype=float)
-        mid_arr = np.asarray(mid_body_section["points"], dtype=float)
-        for frac in fracs:
-            shape_blend = float(frac * frac * (3.0 - 2.0 * frac))
-            points = (1.0 - shape_blend) * nose_arr + shape_blend * mid_arr
-            points[:, 0] = x1 + frac * (x2 - x1)
-            sections.append(
-                {
-                    "name": f"forebody_blend_{frac:.2f}",
-                    "x_m": float(points[0, 0]),
-                    "points": points.tolist(),
-                }
-            )
     sections.extend(
         [
             mid_body_section,

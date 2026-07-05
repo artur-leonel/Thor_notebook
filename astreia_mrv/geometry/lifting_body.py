@@ -111,30 +111,6 @@ def _sample_closed_polyline(points: np.ndarray, samples_per_segment: int = 8) ->
     return np.asarray(samples, dtype=float)
 
 
-def _smooth_transition_rings(
-    ring1: np.ndarray,
-    ring2: np.ndarray,
-    x1: float,
-    x2: float,
-    nose_profile_code: int,
-) -> list[np.ndarray]:
-    """Add derived forebody shoulder stations so the nose-to-body slope is gradual."""
-    if nose_profile_code == 1:
-        fracs = (0.16, 0.34, 0.54, 0.74, 0.90)
-    elif nose_profile_code == 2:
-        fracs = (0.24, 0.52, 0.78)
-    else:
-        return []
-
-    rings: list[np.ndarray] = []
-    for frac in fracs:
-        shape_blend = float(_smoothstep(0.0, 1.0, frac))
-        ring = (1.0 - shape_blend) * ring1 + shape_blend * ring2
-        ring[:, 0] = x1 + frac * (x2 - x1)
-        rings.append(ring)
-    return rings
-
-
 def _scale_z_signed(ring: np.ndarray, positive_scale: float, negative_scale: float) -> np.ndarray:
     scaled = ring.copy()
     positive = scaled[:, 2] >= 0.0
@@ -148,8 +124,11 @@ def _conic_forebody_rings(
     ring_midbody: np.ndarray,
     x_midbody: float,
     ring_count: int,
+    size_exponent: float = 0.82,
+    blend_start: float = 0.18,
+    blend_end: float = 0.86,
 ) -> list[np.ndarray]:
-    """Generate a single smooth blunt-conic forebody up to the first body station.
+    """Generate a single smooth forebody up to the first body station.
 
     Earlier versions ended the nose at an intermediate shoulder and then
     restarted the body expansion, which made a visible kink. This treats the
@@ -176,8 +155,8 @@ def _conic_forebody_rings(
     for k in range(1, ring_count + 1):
         frac = k / ring_count
         x = x_midbody * frac
-        size = math.sin(0.5 * math.pi * frac) ** 0.82
-        shape_blend = float(_smoothstep(0.18, 0.86, frac))
+        size = math.sin(0.5 * math.pi * frac) ** size_exponent
+        shape_blend = float(_smoothstep(blend_start, blend_end, frac))
         ring = (1.0 - shape_blend) * oval + shape_blend * mid
         ring[:, 0] = x
         ring[:, 1:] *= size
@@ -531,23 +510,30 @@ def _build_fuselage(params: PhysicalParameters, contour_samples: int = 8, longit
     if nose_profile_code == 1:
         nose_rings = _conic_forebody_rings(ring1, ring2, x2, max(16, longitudinal_samples + 4))
         path_rings = [ring2, ring3]
+    elif nose_profile_code == 2:
+        nose_rings = _conic_forebody_rings(
+            ring1,
+            ring2,
+            x2,
+            max(14, longitudinal_samples + 2),
+            size_exponent=1.02,
+            blend_start=0.30,
+            blend_end=0.96,
+        )
+        path_rings = [ring2, ring3]
     else:
         nose_rings = []
         for k in range(1, max(4, longitudinal_samples // 2) + 1):
             frac = k / max(4, longitudinal_samples // 2)
-            if nose_profile_code == 0:
-                theta = frac * theta_n
-                x = rn * (1.0 - math.cos(theta))
-                scale = (rn * math.sin(theta)) / max(r1, 1e-9)
-                scale = scale ** float(p["nose_ogive_exponent"])
-            else:
-                x = x1 * frac
-                scale = frac**1.18
+            theta = frac * theta_n
+            x = rn * (1.0 - math.cos(theta))
+            scale = (rn * math.sin(theta)) / max(r1, 1e-9)
+            scale = scale ** float(p["nose_ogive_exponent"])
             ring = ring1.copy()
             ring[:, 0] = x
             ring[:, 1:] *= scale
             nose_rings.append(ring)
-        path_rings = [ring1, *_smooth_transition_rings(ring1, ring2, x1, x2, nose_profile_code), ring2, ring3]
+        path_rings = [ring1, ring2, ring3]
 
     paths = []
     for j in range(ring_size):
